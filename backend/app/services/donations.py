@@ -157,7 +157,7 @@ def require_state(donation, *states, now=None):
         raise HTTPException(409, "Donation is expired or cannot transition from its current status")
 
 
-def recheck(db, donation, *, accepting=False, travel=True):
+def recheck(db, donation, *, accepting=False, travel=True, selected_line_ids=None):
     requirement = db.get(NGORequirement, donation.requirement_id, with_for_update=True, populate_existing=True)
     kitchen, ngo = _participants(db, donation.kitchen_id, donation.ngo_id)
     lines = donation_lines(db, donation, lock=True)
@@ -167,11 +167,13 @@ def recheck(db, donation, *, accepting=False, travel=True):
     if accepting and (expired_offer(donation, now) or not requirement_open(requirement, now)):
         raise HTTPException(409, "Offer or NGO requirement is no longer open")
     eta = _delivery_time(kitchen, ngo) if travel else timedelta()
-    if now + eta >= aware(requirement.available_until):
+    if (selected_line_ids is None or selected_line_ids) and now + eta >= aware(requirement.available_until):
         raise HTTPException(409, "Insufficient time before the NGO deadline")
-    for _, waste, food in lines:
+    for line, waste, food in lines:
         if waste.kitchen_id != kitchen.id or waste.is_simulated != donation.is_simulated:
             raise HTTPException(409, "Food batch is outside this donation's kitchen or environment")
+        if selected_line_ids is not None and line.id not in selected_line_ids:
+            continue
         check = screening_for_use(waste, food, kitchen, now)
         if (check.status != SafetyStatus.ELIGIBLE or check.safe_until is None
                 or now + eta >= check.safe_until or not compatible(food, requirement)):

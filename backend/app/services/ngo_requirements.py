@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timezone
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
@@ -6,6 +6,8 @@ from sqlalchemy import select
 
 from app.core.config import settings
 from app.models.organization import NGORequirement
+from app.models.donation import Donation
+from app.models.enums import DonationStatus
 from app.schemas.redistribution import RequirementCreate, RequirementResponse
 from app.services.reservations import amount, capacity_left, capacity_limits, capacity_usage
 
@@ -62,11 +64,19 @@ def save_requirement(db, ngo_id, payload, row=None):
     if request.is_active and not (request.accepts_vegetarian or request.accepts_non_vegetarian):
         raise HTTPException(422, "An active requirement must accept at least one dietary group")
     if row is not None:
+        protected = ("required_date", "available_until", "accepts_vegetarian",
+                     "accepts_non_vegetarian", "accepted_categories")
+        if any(field in changes and changes[field] != previous[field] for field in protected):
+            accepted = db.scalar(select(Donation.id).where(Donation.requirement_id == row.id,
+                Donation.status.in_((DonationStatus.ACCEPTED, DonationStatus.ASSIGNED,
+                                     DonationStatus.IN_TRANSIT, DonationStatus.DELIVERED))).limit(1))
+            if accepted is not None:
+                raise HTTPException(409, "Resolve accepted donations before changing dates or dietary limits")
         used = capacity_usage(db, row.id)
         if amount(request.capacity_servings) < used["serving"] or amount(request.capacity_pieces) < used["piece"]:
             raise HTTPException(409, "Capacity cannot be reduced below reserved or received quantities")
     else:
-        row = NGORequirement(ngo_id=ngo_id, remaining_capacity=0)
+        row = NGORequirement(ngo_id=ngo_id, remaining_capacity=0, updated_at=now)
         db.add(row)
     for field, value in request.model_dump().items():
         setattr(row, field, value)

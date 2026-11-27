@@ -1,9 +1,10 @@
 from datetime import date, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from app.schemas.forecast import PositiveID
+from app.schemas.waste import SafetyEvidence, Temperature
 
 Quantity = Annotated[float, Field(strict=True, gt=0, le=1e9, allow_inf_nan=False)]
 Capacity = Annotated[float, Field(strict=True, ge=0, le=1e9, allow_inf_nan=False)]
@@ -80,3 +81,32 @@ class OfferRequest(StrictBody):
 
 class ReasonRequest(StrictBody):
     reason: Notes
+
+
+class AssignmentRequest(StrictBody):
+    delivery_person_id: PositiveID
+    notes: Notes | None = None
+
+
+class ReceiptEvidence(SafetyEvidence):
+    storage_temperature: Temperature
+    safe_handling_confirmed: Literal[True]
+
+
+class ReceiptItem(StrictBody):
+    donation_item_id: PositiveID
+    received_servings: Capacity
+    rejection_reason: Notes | None = None
+    evidence: ReceiptEvidence | None = None
+
+
+class ReceiptRequest(StrictBody):
+    inspected: Literal[True]
+    items: list[ReceiptItem] = Field(min_length=1, max_length=30)
+    notes: Notes | None = None
+
+    @model_validator(mode="after")
+    def distinct_items(self):
+        if len({line.donation_item_id for line in self.items}) != len(self.items):
+            raise ValueError("Donation item IDs must be unique")
+        return self

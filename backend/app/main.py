@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.routers.admin import router as admin_router
 from app.routers.analytics import router as analytics_router
 from app.routers.auth import router as auth_router
+from app.routers.deliveries import router as deliveries_router
 from app.routers.donations import router as donations_router
 from app.routers.delivery_personnel import router as delivery_personnel_router
 from app.routers.food_items import router as food_items_router
@@ -71,6 +72,7 @@ app.include_router(ngos_router)
 app.include_router(ngo_requirements_router)
 app.include_router(matches_router)
 app.include_router(donations_router)
+app.include_router(deliveries_router)
 app.include_router(delivery_personnel_router)
 app.include_router(food_items_router)
 app.include_router(forecasts_router)

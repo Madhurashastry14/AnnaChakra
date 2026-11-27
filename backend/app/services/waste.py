@@ -99,7 +99,11 @@ def response_values(row):
 
 def screening_for_use(row, food, kitchen, now=None):
     now = now or datetime.now(timezone.utc)
-    result = screen_waste(row, food.name, getattr(kitchen, "verification_status", None), policy_for_batch(current_policy(), kitchen, row), now)
+    try:
+        result = screen_waste(row, food.name, getattr(kitchen, "verification_status", None),
+                              policy_for_batch(current_policy(), kitchen, row), now)
+    except (TypeError, ValueError, OverflowError):
+        return Screening(SafetyStatus.PENDING, ["Stored safety evidence is invalid."], now, None, "invalid-evidence")
     if row.screened_at is None:
         # Preserve legacy screening information without treating it as validated evidence.
         legacy_expired = row.safe_until is not None and utc(row.safe_until) <= now

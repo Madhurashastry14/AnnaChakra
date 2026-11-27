@@ -10,8 +10,8 @@ from app.models.donation import Donation
 from app.models.enums import DonationStatus, UserRole
 from app.models.organization import Kitchen
 from app.models.user import User
-from app.schemas.redistribution import OfferRequest, ReasonRequest
-from app.services import donations
+from app.schemas.redistribution import AssignmentRequest, OfferRequest, ReasonRequest, ReceiptRequest
+from app.services import deliveries, donations
 from app.services.ngo_requirements import now_utc
 
 router = APIRouter(prefix="/api/v1/donations", tags=["Donations"])
@@ -74,3 +74,33 @@ def reject(donation_id: int, request: ReasonRequest, user: User = Depends(get_cu
 def cancel(donation_id: int, request: ReasonRequest, user: User = Depends(get_current_active_user),
            db: Session = Depends(get_db)):
     return donations.cancel(db, donations.writable(db, user, donation_id, PARTICIPANTS), request.reason)
+
+
+@router.post("/{donation_id}/assign-delivery")
+@router.post("/{donation_id}/assign")
+def assign(donation_id: int, request: AssignmentRequest, user: User = Depends(get_current_active_user),
+           db: Session = Depends(get_db)):
+    return deliveries.assign(db, donations.writable(db, user, donation_id, deliveries.KITCHEN), request)
+
+
+@router.post("/{donation_id}/dispatch")
+def dispatch(donation_id: int, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    return deliveries.dispatch(db, donations.writable(db, user, donation_id, deliveries.KITCHEN))
+
+
+@router.post("/{donation_id}/delivered")
+def delivered(donation_id: int, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    return deliveries.mark_delivered(db, donations.writable(db, user, donation_id, deliveries.KITCHEN))
+
+
+@router.post("/{donation_id}/confirm-receipt")
+@router.post("/{donation_id}/confirm")
+def receipt(donation_id: int, request: ReceiptRequest, user: User = Depends(get_current_active_user),
+            db: Session = Depends(get_db)):
+    return deliveries.confirm_receipt(db, donations.writable(db, user, donation_id, NGO_ROLES), request)
+
+
+@router.post("/{donation_id}/report-failure")
+def failure(donation_id: int, request: ReasonRequest, user: User = Depends(get_current_active_user),
+            db: Session = Depends(get_db)):
+    return deliveries.fail(db, donations.writable(db, user, donation_id, PARTICIPANTS), request.reason)
