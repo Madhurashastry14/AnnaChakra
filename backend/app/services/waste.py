@@ -3,13 +3,14 @@ from math import fsum, isclose
 
 from fastapi import HTTPException
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from app.models.donation import Donation, DonationItem
 from app.models.enums import DonationStatus, SafetyStatus, ServingUnit, WasteType
 from app.models.food import FoodItem
 from app.models.meal_record import MealRecord, MealRecordItem
 from app.models.waste import WasteLog
+from app.models.vision import VisionPrediction
 from app.schemas.waste import SafetyEvidence, WasteRequest, WasteResponse
 from app.services.safety import Screening, current_policy, screen_waste
 from app.services.vision import owned_prediction
@@ -69,6 +70,21 @@ def _validate_accounting(db, kitchen_id, request, current):
         raise HTTPException(409, "Logged waste exceeds the recorded quantity for this meal item") from exc
     if total > cap and not isclose(total, cap, rel_tol=1e-12, abs_tol=1e-9):
         raise HTTPException(409, "Logged waste exceeds the recorded quantity for this meal item")
+
+
+def _validate_image_accounting(db, prediction, kitchen_id, current):
+    digest = prediction.result.get("image_digest")
+    if digest and db.get_bind().dialect.name == "postgresql":
+        db.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+                   {"key": f"waste-image:{kitchen_id}:{digest}"})
+    query = select(WasteLog.id).join(VisionPrediction, WasteLog.prediction_id == VisionPrediction.id)
+    match = (VisionPrediction.result["image_digest"].as_string() == digest
+             if digest else VisionPrediction.id == prediction.id)
+    query = query.where(WasteLog.kitchen_id == kitchen_id, match)
+    if current is not None:
+        query = query.where(WasteLog.id != current.id)
+    if db.scalar(query.limit(1)) is not None:
+        raise HTTPException(409, "This image already supports a waste log. Edit that log instead.")
 
 
 def response_values(row):
@@ -138,7 +154,10 @@ def save_waste(db, kitchen, request, current=None):
         if any(values[key] != previous[key] for key in protected):
             if _donation_allocations(db, current.id):
                 raise HTTPException(409, "An existing donation protects this waste log from operational edits")
-    prediction = owned_prediction(db, kitchen_id, request.prediction_id) if request.prediction_id else None
+    prediction = (owned_prediction(db, kitchen_id, request.prediction_id, lock=True)
+                  if request.prediction_id else None)
+    if prediction is not None:
+        _validate_image_accounting(db, prediction, kitchen_id, current)
     _validate_accounting(db, kitchen_id, request, current)
     update_prediction = current is None or current.prediction_id != request.prediction_id
     row = current if current is not None else WasteLog(kitchen_id=kitchen_id)
@@ -149,7 +168,11 @@ def save_waste(db, kitchen, request, current=None):
         row.predicted_food = metadata.get("predicted_food")
         row.confidence_score = metadata.get("confidence")
         row.model_version = metadata.get("model_version")
-        row.estimated_servings = None
+    metadata = prediction.result if prediction else {}
+    count = metadata.get("manual_counts", {}).get(str(food.id), metadata)
+    row.estimated_servings = (count.get("estimated_servings")
+                              if food.serving_unit == ServingUnit.PIECE
+                              and count.get("count_food_item_id") == food.id else None)
     row.safety_evidence = evidence
     check = screen_waste(row, food.name, getattr(kitchen, "verification_status", None), current_policy())
     row.safety_status = check.status
