@@ -2396,10 +2396,27 @@
   margin-top: 22px;
 }
 
+.k-forecast-results-anchor {
+  min-width: 0;
+  scroll-margin-top: 92px;
+}
+
+.k-forecast-results-anchor:focus {
+  outline: none;
+}
+
 .k-forecast-result {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
+}
+
+.k-forecast-result > .k-card {
+  margin-bottom: 0;
+}
+
+.k-forecast-result > .k-callout {
+  margin: 0;
 }
 
 .k-result-summary,
@@ -2418,7 +2435,12 @@
 }
 
 .k-result-hero {
-  margin-bottom: 18px;
+  margin-bottom: 0;
+}
+
+.k-result-hero-main {
+  min-width: 0;
+  flex: 1 1 320px;
 }
 
 .k-result-summary-main h2,
@@ -2470,7 +2492,26 @@
   margin-top: 16px;
 }
 
-.k-forecast-items,
+.k-forecast-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr));
+  align-items: start;
+  gap: 14px;
+}
+
+.k-forecast-item {
+  min-width: 0;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid var(--k-line);
+  border-radius: 12px;
+  box-shadow: var(--k-shadow-sm);
+}
+
+.k-forecast-item.has-warning {
+  border-left: 3px solid #d39a48;
+}
+
 .k-meal-items {
   display: flex;
   flex-direction: column;
@@ -2492,10 +2533,30 @@
   font-size: 17px;
 }
 
+.k-forecast-item-head > div:first-child {
+  min-width: 0;
+  flex: 1 1 240px;
+}
+
 .k-forecast-prep {
+  max-width: 100%;
+  flex: 0 1 auto;
   padding: 9px 11px;
   background: #f7f9f4;
   border-radius: 8px;
+}
+
+.k-forecast-prep span {
+  display: block;
+  color: var(--k-muted);
+  font-size: 10px;
+}
+
+.k-forecast-prep strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .k-ingredient-details {
@@ -2509,11 +2570,110 @@
   cursor: pointer;
 }
 
-.k-method-legend,
 .k-method-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
   gap: 8px;
+}
+
+.k-method-note {
+  min-width: 0;
+  padding: 11px;
+  background: #f8faf6;
+  border: 1px solid var(--k-line);
+  border-radius: 9px;
+}
+
+.k-method-note p {
+  margin: 7px 0 0;
+  color: var(--k-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.k-prediction-explanation {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.k-model-version {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #f8faf6;
+  border: 1px solid var(--k-line);
+  border-radius: 9px;
+  font-size: 11px;
+}
+
+.k-model-version > span {
+  color: var(--k-muted);
+}
+
+.k-diner-distribution-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+.k-diner-chart {
+  min-width: 0;
+  height: 260px;
+}
+
+.k-diner-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.k-diner-legend li {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px;
+  background: #f8faf6;
+  border: 1px solid var(--k-line);
+  border-radius: 9px;
+}
+
+.k-diner-legend-swatch {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  margin-top: 4px;
+  border-radius: 50%;
+}
+
+.k-diner-legend-text {
+  min-width: 0;
+}
+
+.k-diner-legend-text strong,
+.k-diner-legend-text small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.k-diner-legend-text strong {
+  font-size: 11.5px;
+}
+
+.k-diner-legend-text small {
+  margin-top: 3px;
+  color: var(--k-muted);
+  font-size: 10.5px;
+  line-height: 1.45;
 }
 
 .k-radio-cards {
@@ -3455,6 +3615,10 @@
     width: 100%;
     min-width: 0;
   }
+
+  .k-result-hero-main {
+    flex: 0 1 auto;
+  }
 }
 
 @media (max-width: 1024px) {
@@ -3642,6 +3806,10 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .k-forecast-result .k-result-hero-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .k-result-hero-stats > div {
     padding-left: 0;
     padding-top: 7px;
@@ -3724,11 +3892,19 @@
   .k-dashboard-lists {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .k-diner-distribution-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @container (max-width: 600px) {
   .k-form-grid-3 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .k-diner-chart {
+    height: 220px;
   }
 
   .k-card-action {
