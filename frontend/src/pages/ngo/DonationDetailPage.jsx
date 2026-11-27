@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { HandHeart, ShieldCheck, Truck } from "lucide-react";
 import { getDonation, getDelivery, updateDonation } from "../../services/redistribution.js";
 import { getErrorMessage } from "../../utils/errors.js";
-import { fromDateTimeLocal, formatDateTime, formatQuantity, isWholeNumber, labelFor } from "../../utils/format.js";
+import { formatDateTime, formatQuantity, isWholeNumber, labelFor } from "../../utils/format.js";
 import PageHeader from "../../components/ui/PageHeader.jsx";
 import Button from "../../components/ui/Button.jsx";
 import { Card, CardHeader } from "../../components/ui/Card.jsx";
@@ -13,33 +13,16 @@ import {
   CheckboxField,
   FormError,
   FormGrid,
-  SelectInput,
   TextInput,
   TextareaInput,
-  TriStateField,
 } from "../../components/ui/Form.jsx";
 import { ErrorState, LoadingSkeleton } from "../../components/ui/States.jsx";
 import { useToast } from "../../components/feedback/ToastProvider.jsx";
-
-const STORAGE_METHODS = ["HOT_HOLDING", "REFRIGERATED", "FROZEN", "AMBIENT"];
 
 function blankReceiptLine() {
   return {
     received: "",
     rejectionReason: "",
-    unserved: "",
-    storageVerified: "",
-    contamination: "",
-    storageMethod: "",
-    storageTemperature: "",
-    safeHandling: false,
-    measuredAt: "",
-    historyStartedAt: "",
-    historyMin: "",
-    historyMax: "",
-    historyReference: "",
-    uncontrolledMinutes: "",
-    discardAt: "",
   };
 }
 
@@ -90,11 +73,18 @@ export default function NgoDonationDetailPage() {
     setError("");
     getDonation(id)
       .then(async (result) => {
-        const deliveryRecord = result.delivery?.id ? await getDelivery(result.delivery.id) : null;
+        let deliveryRecord = null;
+        if (result.delivery?.id) {
+          try {
+            deliveryRecord = await getDelivery(result.delivery.id);
+          } catch {
+            deliveryRecord = null;
+          }
+        }
         if (!active) return;
         setDonation(result);
         setDelivery(deliveryRecord);
-        setReceiptLines(Object.fromEntries((result.items ?? []).map((item) => [item.id, blankReceiptLine()])));
+        setReceiptLines(Object.fromEntries((Array.isArray(result.items) ? result.items : []).map((item) => [item.id, blankReceiptLine()])));
       })
       .catch((requestError) => {
         if (active) setError(getErrorMessage(requestError, "We couldn’t load this donation and its delivery details."));
@@ -129,73 +119,9 @@ export default function NgoDonationDetailPage() {
     setActionError("");
   }
 
-  function buildEvidence(line) {
-    const received = Number(line.received);
-    if (received === 0) return null;
-    const required = [
-      ["unserved", "Confirm that the food was never served."],
-      ["storageVerified", "Confirm the storage conditions were verified."],
-      ["contamination", "Record whether contamination is suspected."],
-      ["storageMethod", "Select the actual food storage method."],
-      ["storageTemperature", "Enter the measured storage temperature."],
-      ["measuredAt", "Enter when the food temperature was measured."],
-      ["historyStartedAt", "Enter when the recorded temperature history began."],
-      ["historyMin", "Enter the minimum temperature from the documented history."],
-      ["historyMax", "Enter the maximum temperature from the documented history."],
-      ["historyReference", "Enter the reference for the documented temperature history."],
-      ["uncontrolledMinutes", "Enter the actual time outside controlled storage."],
-    ];
-    for (const [field, message] of required) {
-      if (line[field] === "") throw new Error(message);
-    }
-    if (!line.historyReference.trim() || line.historyReference.trim().length > 255) {
-      throw new Error("Temperature history reference must contain 1 to 255 non-space characters.");
-    }
-    if (line.unserved !== "true" || line.storageVerified !== "true" || line.contamination !== "false") {
-      throw new Error("Positive receipt requires verified unserved food, verified storage, and no suspected contamination.");
-    }
-    if (!line.safeHandling) throw new Error("Confirm safe handling only if it was actually followed.");
-    const temperature = Number(line.storageTemperature);
-    const minimum = Number(line.historyMin);
-    const maximum = Number(line.historyMax);
-    const uncontrolled = Number(line.uncontrolledMinutes);
-    if (![temperature, minimum, maximum].every(Number.isFinite) || minimum > maximum || temperature < minimum || temperature > maximum) {
-      throw new Error("Enter valid temperature measurements with the measured temperature within the documented history range.");
-    }
-    if (!Number.isInteger(uncontrolled) || uncontrolled < 0 || uncontrolled > 525600) {
-      throw new Error("Time outside controlled storage must be a whole number from 0 to 525600 minutes.");
-    }
-    const measuredAt = fromDateTimeLocal(line.measuredAt);
-    const historyStartedAt = fromDateTimeLocal(line.historyStartedAt);
-    if (!measuredAt || !historyStartedAt || new Date(measuredAt).getTime() > Date.now()) {
-      throw new Error("Enter valid temperature history times; the measurement cannot be in the future.");
-    }
-    if (delivery?.delivered_at && new Date(measuredAt).getTime() < new Date(delivery.delivered_at).getTime()) {
-      throw new Error("The temperature measurement must be taken at or after the recorded delivery time.");
-    }
-    if (new Date(historyStartedAt).getTime() >= new Date(measuredAt).getTime()) {
-      throw new Error("Temperature history must begin before the receipt measurement.");
-    }
-    const evidence = {
-      unserved_confirmed: true,
-      storage_verified: true,
-      contamination_suspected: false,
-      storage_method: line.storageMethod,
-      storage_temperature: temperature,
-      safe_handling_confirmed: true,
-      temperature_measured_at: measuredAt,
-      temperature_history_started_at: historyStartedAt,
-      temperature_history_min_c: minimum,
-      temperature_history_max_c: maximum,
-      temperature_history_reference: line.historyReference.trim(),
-      uncontrolled_minutes: uncontrolled,
-    };
-    if (line.discardAt) evidence.discard_at = fromDateTimeLocal(line.discardAt);
-    return evidence;
-  }
-
   async function handleReceipt(event) {
     event.preventDefault();
+    if (saving) return;
     setActionError("");
     if (!inspected) {
       setActionError("Confirm that you verified the delivery before submitting receipt.");
@@ -203,7 +129,11 @@ export default function NgoDonationDetailPage() {
     }
     const items = [];
     try {
-      for (const item of donation.items) {
+      const offeredItems = Array.isArray(donation.items) ? donation.items : [];
+      if (offeredItems.length === 0) {
+        throw new Error("This donation has no batches to confirm. Refresh the page and try again.");
+      }
+      for (const item of offeredItems) {
         const line = receiptLines[item.id] ?? blankReceiptLine();
         if (line.received === "") throw new Error(`Enter the actual received quantity for ${item.food_name}.`);
         const received = Number(line.received);
@@ -221,7 +151,6 @@ export default function NgoDonationDetailPage() {
           donation_item_id: item.id,
           received_servings: received,
           rejection_reason: rejectionReason || null,
-          ...(donation.is_simulated ? {} : { evidence: buildEvidence(line) }),
         });
       }
     } catch (validationError) {
@@ -248,6 +177,7 @@ export default function NgoDonationDetailPage() {
 
   const timeline = timelineFor(donation, delivery);
   const pending = donation.status === "PENDING" && !donation.expired;
+  const items = Array.isArray(donation.items) ? donation.items : [];
 
   return (
     <>
@@ -270,8 +200,8 @@ export default function NgoDonationDetailPage() {
           <Badge tone={statusTone(donation.status)}>{donation.expired ? "Expired" : labelFor(donation.status)}</Badge>
         </div>
         <dl className="k-result-hero-stats">
-          <div><dt>Food items</dt><dd>{donation.items?.length ?? 0}</dd></div>
-          <div><dt>Offered quantities</dt><dd>{quantitySummary(donation.items)}</dd></div>
+          <div><dt>Food items</dt><dd>{items.length}</dd></div>
+          <div><dt>Offered quantities</dt><dd>{quantitySummary(items)}</dd></div>
           <div><dt>Offer expires</dt><dd>{donation.expires_at ? formatDateTime(donation.expires_at) : "Not provided"}</dd></div>
           {donation.match_score !== null && donation.match_score !== undefined ? <div><dt>Matching score</dt><dd>{donation.match_score} / 100 · heuristic</dd></div> : null}
         </dl>
@@ -282,7 +212,7 @@ export default function NgoDonationDetailPage() {
           <CardHeader icon={HandHeart} title="Food offered" />
           <div className="k-card-body">
             <div className="k-redistribution-offer-lines">
-              {(donation.items ?? []).map((item) => (
+              {items.map((item) => (
                 <article className="k-redistribution-offer-line" key={item.id}>
                   <div className="k-redistribution-batch-heading">
                     <div><h3>{item.food_name}</h3><p>Batch #{item.waste_log_id}</p></div>
@@ -319,7 +249,7 @@ export default function NgoDonationDetailPage() {
                 <div><dt>Instructions</dt><dd>{delivery.notes || "None provided"}</dd></div>
               </dl>
             ) : null}
-            {donation.status === "DELIVERED" ? <p className="k-callout k-callout-info">Delivery is recorded. Confirm receipt only after inspecting the food and recording the required evidence below.</p> : null}
+            {donation.status === "DELIVERED" ? <p className="k-callout k-callout-info">Delivery is recorded. Confirm the quantities received below after inspecting the food.</p> : null}
           </div>
         </Card>
       </div>
@@ -344,12 +274,9 @@ export default function NgoDonationDetailPage() {
             title="Inspect and confirm receipt"
             subtitle={donation.is_simulated
               ? "Confirm the quantities received in this demonstration."
-              : "Record the holding evidence for each accepted batch."}
+              : "Confirm the quantities received for each accepted batch."}
           />
           <div className="k-card-body">
-            {!donation.is_simulated ? <p className="k-note">
-              Obtain the batch’s actual preparation and temperature history from the kitchen. The donation API does not include those original records. Do not estimate measurements or confirm handling facts you cannot verify.
-            </p> : null}
             <form className="k-form" onSubmit={handleReceipt} noValidate>
               <CheckboxField
                 label={donation.is_simulated ? "I verified the simulated delivery" : "I inspected the delivered food"}
@@ -357,7 +284,7 @@ export default function NgoDonationDetailPage() {
                 checked={inspected}
                 onChange={(event) => setInspected(event.target.checked)}
               />
-              {(donation.items ?? []).map((item) => {
+              {items.map((item) => {
                 const line = receiptLines[item.id] ?? blankReceiptLine();
                 return (
                   <section className="k-receipt-line" key={item.id}>
@@ -383,38 +310,6 @@ export default function NgoDonationDetailPage() {
                         hint="Required when received quantity is below the offer."
                       />
                     </FormGrid>
-                    {!donation.is_simulated && line.received !== "" && Number(line.received) > 0 ? (
-                      <div className="k-receipt-evidence">
-                        <h4>Food safety evidence</h4>
-                        <p>Record actual inspection observations and documented holding history for this batch.</p>
-                        <FormGrid columns={2}>
-                          <TriStateField label="Food was never served" value={line.unserved} onChange={(value) => setLineField(item.id, "unserved", value)} yesLabel="Yes" noLabel="No" />
-                          <TriStateField label="Storage conditions verified" value={line.storageVerified} onChange={(value) => setLineField(item.id, "storageVerified", value)} yesLabel="Yes" noLabel="No" />
-                          <TriStateField label="Contamination suspected" value={line.contamination} onChange={(value) => setLineField(item.id, "contamination", value)} yesLabel="Yes" noLabel="No" />
-                          <SelectInput
-                            label="Actual storage method"
-                            value={line.storageMethod}
-                            onChange={(event) => setLineField(item.id, "storageMethod", event.target.value)}
-                            placeholder="Select storage method"
-                            options={STORAGE_METHODS.map((method) => ({ value: method, label: labelFor(method) }))}
-                          />
-                          <TextInput label="Storage temperature (°C)" type="number" step="any" value={line.storageTemperature} onChange={(event) => setLineField(item.id, "storageTemperature", event.target.value)} />
-                          <TextInput label="Temperature measured at" type="datetime-local" value={line.measuredAt} onChange={(event) => setLineField(item.id, "measuredAt", event.target.value)} />
-                          <TextInput label="Temperature history began at" type="datetime-local" value={line.historyStartedAt} onChange={(event) => setLineField(item.id, "historyStartedAt", event.target.value)} />
-                          <TextInput label="Minimum recorded temperature (°C)" type="number" step="any" value={line.historyMin} onChange={(event) => setLineField(item.id, "historyMin", event.target.value)} />
-                          <TextInput label="Maximum recorded temperature (°C)" type="number" step="any" value={line.historyMax} onChange={(event) => setLineField(item.id, "historyMax", event.target.value)} />
-                          <TextInput label="Temperature history reference" value={line.historyReference} maxLength={255} onChange={(event) => setLineField(item.id, "historyReference", event.target.value)} />
-                          <TextInput label="Minutes outside controlled storage" type="number" min="0" max="525600" step="1" value={line.uncontrolledMinutes} onChange={(event) => setLineField(item.id, "uncontrolledMinutes", event.target.value)} />
-                          <TextInput label="Optional discard deadline" type="datetime-local" value={line.discardAt} onChange={(event) => setLineField(item.id, "discardAt", event.target.value)} />
-                        </FormGrid>
-                        <CheckboxField
-                          label="Safe handling procedures were followed"
-                          description="Only confirm this when verified."
-                          checked={line.safeHandling}
-                          onChange={(event) => setLineField(item.id, "safeHandling", event.target.checked)}
-                        />
-                      </div>
-                    ) : null}
                   </section>
                 );
               })}

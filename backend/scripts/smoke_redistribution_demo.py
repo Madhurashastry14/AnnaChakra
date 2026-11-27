@@ -45,7 +45,6 @@ def run(base_url, password):
         if surplus is None:
             raise RuntimeError("No simulated Biryani available. Seed a fresh batch.")
         waste_id = surplus["waste_log_id"]
-        batch = request("GET", f"waste-logs/{waste_id}", token=kitchen)
         matches = request("POST", "matches", token=kitchen, json={"waste_log_ids": [waste_id]})
         match = next(row for row in matches["items"] if row["requirement_id"] == requirement["id"])
         donation = request("POST", "donations", 201, kitchen, json={
@@ -63,15 +62,9 @@ def run(base_url, password):
         delivery = f"deliveries/{assigned['delivery']['id']}"
         dispatched = request("POST", delivery + "/dispatch", token=kitchen)
         delivered = request("POST", delivery + "/mark-delivered", token=kitchen)
-        fields = ("unserved_confirmed", "storage_verified", "contamination_suspected", "storage_method",
-                  "storage_temperature", "safe_handling_confirmed", "uncontrolled_minutes",
-                  "temperature_history_started_at", "temperature_history_min_c",
-                  "temperature_history_max_c", "temperature_history_reference")
-        evidence = {key: batch[key] for key in fields}
-        evidence["temperature_measured_at"] = datetime.now(timezone.utc).isoformat()
         completed = request("POST", path + "/confirm-receipt", token=ngo, json={
             "inspected": True, "items": [{"donation_item_id": donation["items"][0]["id"],
-                                        "received_servings": 5, "evidence": evidence}],
+                                        "received_servings": 5}],
         })
         impact = request("GET", summary, token=ngo)
         assert [accepted["status"], assigned["status"], dispatched["status"], delivered["status"],

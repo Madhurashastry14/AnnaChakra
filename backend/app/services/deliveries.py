@@ -86,6 +86,8 @@ def fail(db, donation, reason):
 
 
 def confirm_receipt(db, donation, request):
+    if donation.status == Status.COMPLETED:
+        raise HTTPException(409, "Receipt has already been confirmed for this donation")
     require_state(donation, Status.DELIVERED)
     delivery = for_donation(db, donation.id)
     if delivery.status != DeliveryStatus.DELIVERED or delivery.delivered_at is None:
@@ -104,8 +106,7 @@ def confirm_receipt(db, donation, request):
             raise HTTPException(422, "Give a reason for any quantity not received")
         line.received_servings = received.received_servings
         line.receipt_evidence = {"inspected": True, "is_simulated": donation.is_simulated,
-                                 "rejection_reason": received.rejection_reason,
-                                 "evidence": None}
+                                 "rejection_reason": received.rejection_reason}
     donation.status = Status.COMPLETED
     donation.completed_at, donation.receipt_notes = now, request.notes
     return finish(db, donation)

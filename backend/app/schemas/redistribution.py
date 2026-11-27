@@ -4,7 +4,6 @@ from typing import Annotated, Literal
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from app.schemas.forecast import PositiveID
-from app.schemas.waste import SafetyEvidence, Temperature
 
 Quantity = Annotated[float, Field(strict=True, gt=0, le=1e9, allow_inf_nan=False)]
 Capacity = Annotated[float, Field(strict=True, ge=0, le=1e9, allow_inf_nan=False)]
@@ -88,16 +87,10 @@ class AssignmentRequest(StrictBody):
     notes: Notes | None = None
 
 
-class ReceiptEvidence(SafetyEvidence):
-    storage_temperature: Temperature
-    safe_handling_confirmed: Literal[True]
-
-
 class ReceiptItem(StrictBody):
     donation_item_id: PositiveID
     received_servings: Capacity
     rejection_reason: Notes | None = None
-    evidence: ReceiptEvidence | None = None
 
 
 class ReceiptRequest(StrictBody):
