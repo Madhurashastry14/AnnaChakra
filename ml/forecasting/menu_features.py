@@ -18,7 +18,7 @@ NUMBERS = CALENDAR + [
     "expected_people", "default_servings_per_person", "competing_main_dish_count",
     "accompaniment_count", "compatible_main_count", "historical_preference",
     "exact_menu_preference", "history_count", "historical_recipients", "rolling_7",
-    "uptake_rate", "preference_weight", "historical_rate",
+    "uptake_rate", "preference_weight", "historical_rate", "main_recipient_pool",
 ]
 FEATURE_SCHEMA = {"categorical": CATEGORIES, "numerical": NUMBERS, "hashed": "menu_tokens"}
 
@@ -74,6 +74,7 @@ def build_menu_features(dishes, units, expected, mode, kitchen, meal_type, date,
             "menu_tokens": tuple([f"{d.role}:{d.key}" for d in dishes]
                                  + [f"pairs-with:{key}" for key in dish.compatible if key in mains]),
             "main_recipient_pool": pool,
+            "compatible_keys": dish.compatible,
             "INDEPENDENT": expected * dish.portion,
             "EQUAL_ALLOCATION": equal[dish.key].quantity,
             "BASELINE": simple[dish.key].quantity,
@@ -135,6 +136,9 @@ def training_menu_features(raw):
             )
             equivalents = meal.equivalents()
             total = sum(equivalents.values())
+            if meal.mode == CHOICE and equivalents and not total:
+                history.append(meal)
+                continue
             for feature, observation in zip(features, meal.observations):
                 share = None
                 if meal.mode == CHOICE and total > 0 and observation.food_key in equivalents:
