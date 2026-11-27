@@ -7,3 +7,10 @@ from app.models.organization import (
 )
 
 from app.models.food import FoodItem
+
+from app.models.forecast import Forecast, ForecastItem
+
+from app.models.meal_record import (
+    MealRecord,
+    MealRecordItem
+)
