@@ -1,4 +1,4 @@
-﻿from datetime import date
+﻿from datetime import date, timedelta
 from types import SimpleNamespace
 
 import pytest
@@ -32,9 +32,9 @@ def api(monkeypatch):
                         is_vegetarian=True, default_servings_per_person=1,
                         ingredients_per_serving=[{"name": "Raw rice", "quantity": 75, "unit": "g"}]))
         db.add_all([
-            MealRecord(id=1, kitchen_id=1, meal_date=date(2026, 11, 26),
+            MealRecord(id=1, kitchen_id=1, meal_date=date.today() - timedelta(days=1),
                        meal_type=MealType.LUNCH, actual_people=10),
-            MealRecord(id=2, kitchen_id=2, meal_date=date(2026, 11, 26),
+            MealRecord(id=2, kitchen_id=2, meal_date=date.today() - timedelta(days=1),
                        meal_type=MealType.LUNCH, actual_people=10),
         ])
         db.add_all([
@@ -59,7 +59,7 @@ def api(monkeypatch):
     engine.dispose()
 
 
-MENU = {"meal_date": "2026-11-27", "meal_type": "LUNCH",
+MENU = {"meal_date": date.today().isoformat(), "meal_type": "LUNCH",
         "expected_people": 20, "food_item_ids": [1]}
 
 

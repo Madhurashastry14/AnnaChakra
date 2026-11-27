@@ -56,7 +56,7 @@ Response:
 ```json
 {"id":1,"meal_date":"2026-11-27","meal_type":"LUNCH","expected_people":200,"model_version":null,"items":[{"food_item_id":1,"name":"Rice","serving_unit":"serving","predicted_servings":190.2,"recommended_servings":191,"prediction_method":"BASELINE","ingredients":[{"name":"Raw rice","quantity":14.325,"unit":"kg"}]}],"created_at":"2026-11-27T06:00:00Z"}
 ```
-Example shows one item for brevity; actual response includes every requested dish. Methods BASELINE, LOCAL_HISTORY, ML. model_version nullable when no trained model used. Recommendations round up; ingredients derive from recommended servings. Cold start uses catalogue defaults; local history adjusts demand; ML only used when suitable training data/model available. Meal types BREAKFAST, LUNCH, DINNER. Positive attendance, unique nonempty menu.
+Example shows one item for brevity; actual response includes every requested dish. Methods BASELINE, LOCAL_HISTORY, ML. model_version nullable when no trained model used. Each item also includes expected_people, historical_observation_count, model_version, and warnings. Recommendations round up and ingredients derive from recommended servings. Cold start uses catalogue defaults; local history adjusts demand; ML only used when suitable training data/model available. Meal types BREAKFAST, LUNCH, DINNER. Positive attendance, unique nonempty menu.
 
 `GET /forecasts` — Kitchen list, optional meal_date. `GET /forecasts/{id}` — Kitchen detail. Both return forecast objects above.
 
@@ -66,7 +66,7 @@ Example shows one item for brevity; actual response includes every requested dis
 ```json
 {"forecast_id":1,"meal_date":"2026-11-27","meal_type":"LUNCH","actual_people":185,"items":[{"food_item_id":1,"prepared_servings":200,"leftover_servings":25,"plate_waste_servings":5,"shortage_occurred":false}]}
 ```
-Response: request fields plus `id`, `created_at`, and each item's `id`, `served_servings` (175), `consumed_servings` (170). `forecast_id` and `plate_waste_servings` nullable; consumed is null if plate waste unknown. Leftover means unserved surplus only. Nonnegative quantities; leftover <= prepared; plate waste <= served. Actual attendance may be zero; exclude zero-attendance and shortage records from naive per-person demand training. Demand target is served quantity, not consumed quantity. One record per linked forecast; dish IDs unique. Linked forecast must belong to kitchen and match date/type/menu. Records without forecast allowed.
+Response: request fields plus `id`, `created_at`, and each item's `id`, `served_servings` (175), `consumed_servings` (170). `forecast_id` and `plate_waste_servings` nullable; consumed is null if plate waste unknown. Leftover means unserved surplus only. Nonnegative quantities; leftover <= prepared; plate waste <= served. Actual attendance may be zero; exclude zero-attendance and shortage records from naive per-person demand training. Demand target is served quantity, not consumed quantity. One record per linked forecast; dish IDs unique. Linked forecast must belong to kitchen and match date/type/menu. Records without a forecast are allowed. Meal dates must be today or earlier. Piece-based quantities must be whole numbers.
 
 `GET /meal-records` — Kitchen list; `GET /meal-records/{id}` — detail; `PATCH /meal-records/{id}` — same editable fields, disallow changes conflicting with linked waste/donation records. Store records for future retraining; saving a record does not automatically retrain a model.
 

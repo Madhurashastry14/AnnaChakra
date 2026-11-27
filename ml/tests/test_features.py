@@ -1,4 +1,5 @@
 ﻿import pandas as pd
+import pytest
 
 from ml.forecasting.features import chronological_split, temporal_features
 from ml.forecasting.inspect_dataset import WORKBOOK
@@ -16,6 +17,7 @@ def test_same_day_records_never_see_each_other():
     assert features.rolling_7.iloc[1:].tolist() == [10, 10, 30]
 
 
+@pytest.mark.skipif(not WORKBOOK.is_file(), reason="Local Kaggle workbook is unavailable")
 def test_workbook_and_chronological_split():
     rows = restaurant_records(pd.read_excel(WORKBOOK))
     assert len(rows) == 1000

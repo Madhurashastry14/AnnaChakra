@@ -1,4 +1,6 @@
-﻿from test_forecasts import MENU, api
+﻿from datetime import date, timedelta
+
+from test_forecasts import MENU, api
 
 
 def test_feedback_updates_history_and_preserves_ownership(api):
@@ -29,7 +31,7 @@ def test_feedback_updates_history_and_preserves_ownership(api):
     assert client.patch(detail, json={"items": [payload["items"][0] | {
         "plate_waste_servings": 29,
     }]}).status_code == 422
-    future = client.post("/api/v1/forecasts", json=MENU | {"meal_date": "2026-11-28"}).json()
+    future = client.post("/api/v1/forecasts", json=MENU | {"meal_date": (date.today() + timedelta(days=1)).isoformat()}).json()
     assert future["items"][0]["historical_observation_count"] == 2
     actor.id = 2
     assert client.get(detail).status_code == 404
