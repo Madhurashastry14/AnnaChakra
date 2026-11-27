@@ -5,6 +5,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from app.core.database import engine
 from app.routers.admin import router as admin_router
+from app.routers.analytics import router as analytics_router
 from app.routers.auth import router as auth_router
 from app.routers.delivery_personnel import router as delivery_personnel_router
 from app.routers.food_items import router as food_items_router
@@ -37,6 +38,7 @@ app.include_router(food_items_router)
 app.include_router(forecasts_router)
 app.include_router(meal_records_router)
 app.include_router(admin_router)
+app.include_router(analytics_router)
 app.include_router(vision_router)
 app.include_router(waste_router)
 
