@@ -1,4 +1,4 @@
-﻿# NGO matching and redistribution API
+# NGO matching and redistribution API
 
 All routes below have the `/api/v1` prefix and require the existing bearer token. Kitchen and NGO actions are scoped to the profile associated with that user. Read routes return 404 for inaccessible records and action routes return 403 for the wrong role. Administrators can monitor records and aggregates. They cannot impersonate parties to move a donation through its lifecycle.
 
@@ -125,5 +125,22 @@ All accept inclusive UTC `date_from` and `date_to`. Offer status aggregates filt
 6. View the donation, delivery, summary and trend endpoints. Try reducing capacity below an accepted reservation or accepting twice to see 409 responses.
 
 The backend will refuse simulated policy use outside demo/test and will refuse real batches and organizations in demo mode. Production requires a separately approved, configured policy and valid evidence. There is no background cleanup queue or route/GPS integration.
+
+### Automated hackathon smoke test
+
+From `backend` in PowerShell, reuse the local PostgreSQL credentials from your existing configuration and target the isolated database:
+
+```powershell
+$env:APP_ENV = 'demo'
+$env:SAFETY_POLICY_PATH = 'config/safety_policy.demo.json'
+$env:DATABASE_URL = python -c "from app.core.database import engine; print(engine.url.set(database='annachakra_demo_hackathon').render_as_string(hide_password=False))"
+python -m alembic upgrade head
+python -m scripts.seed_redistribution_demo --batch-key (Get-Date -Format yyyyMMdd-HHmmss)
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8011
+```
+
+Create the local `annachakra_demo_hackathon` database first if it does not exist. The seeder prompts for the demo password or reads `REDISTRIBUTION_DEMO_PASSWORD`. In a second terminal with the same demo configuration and password variable, run `python -m scripts.smoke_redistribution_demo`. It uses both demo logins, completes a real HTTP workflow, verifies that impact increased, and prints JSON without access tokens. Each run creates a new requirement and donation.
+
+From `frontend`, set `$env:VITE_API_URL = 'http://127.0.0.1:8011'` before starting `npm.cmd run dev -- --host localhost --port 5173 --strictPort`. If Vite is already running, restart it with this configuration. The kitchen Donations page is at `/kitchen/donations`, and the NGO login opens `/ngo/donations`. These pages display live records. Use the smoke command or Swagger for workflow actions.
 
 Run regression tests from `backend` with `python -m pytest tests`. Set `FORECAST_TEST_POSTGRES=1` for opt-in PostgreSQL checks in isolated test schemas. Use a local development database with privileges to create these schemas.
