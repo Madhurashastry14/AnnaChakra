@@ -1,25 +1,17 @@
-# AnnaChakra
+# React + Vite
 
-**AI-Powered Food Waste Reduction and Redistribution Platform**
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-AnnaChakra is an intelligent food management platform designed to help institutional kitchens reduce food waste through demand forecasting, computer vision-assisted waste logging and surplus food redistribution.
+Currently, two official plugins are available:
 
-The system learns from historical kitchen records to provide personalized food preparation recommendations and connects eligible surplus food with verified NGOs based on their requirements, capacity and location.
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-## Features
+## React Compiler
 
-### Kitchen Portal
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-- Kitchen registration and profile management.
-- AI-powered dish-wise demand forecasting.
-- Attendance-based food preparation recommendations.
-- Ingredient quantity calculation.
-- Historical meal and consumption tracking.
-- Computer vision-assisted food waste logging.
-- Surplus food safety screening.
-- Location-based NGO matching.
-- Donation and delivery personnel management.
-- Food waste and consumption analytics.
+## Expanding the ESLint configuration
 
 ### NGO Portal
 
