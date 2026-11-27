@@ -1,6 +1,6 @@
 ﻿"""Serving-rate forecasting independent of any model or ML dependency."""
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date
 from math import isfinite
 
 HISTORY_WINDOW_DAYS = 90
@@ -39,7 +39,7 @@ def eligible_history(observations, kitchen_key, food_key, meal_type, meal_date,
                      window_days=HISTORY_WINDOW_DAYS):
     if window_days is not None and window_days <= 0:
         raise ValueError("History window must be positive")
-    cutoff = meal_date - timedelta(days=window_days) if window_days is not None else date.min
+    cutoff = date.fromordinal(max(1, meal_date.toordinal() - window_days)) if window_days is not None else date.min
     return [row for row in observations
             if (row.kitchen_key, row.food_key, row.meal_type) == (kitchen_key, food_key, meal_type)
             and cutoff <= row.meal_date < meal_date and row.valid]

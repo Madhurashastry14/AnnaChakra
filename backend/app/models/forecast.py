@@ -1,7 +1,7 @@
-from datetime import date, datetime
+﻿from datetime import date, datetime
 
 from sqlalchemy import (
-    Date, DateTime, Integer, Float, String,
+    Date, DateTime, Integer, Float, String, JSON,
     ForeignKey, Enum, func, CheckConstraint,
     UniqueConstraint
 )
@@ -83,3 +83,5 @@ class ForecastItem(Base):
     prediction_method: Mapped[PredictionMethod] = mapped_column(
         Enum(PredictionMethod, name="prediction_method")
     )
+
+    prediction_details: Mapped[dict | None] = mapped_column(JSON, nullable=True)

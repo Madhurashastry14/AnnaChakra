@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+﻿from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import HTTPException
 from sqlalchemy import text
@@ -8,6 +8,7 @@ from app.routers.admin import router as admin_router
 from app.routers.auth import router as auth_router
 from app.routers.delivery_personnel import router as delivery_personnel_router
 from app.routers.food_items import router as food_items_router
+from app.routers.forecasts import router as forecasts_router
 from app.routers.kitchens import router as kitchens_router
 from app.routers.ngos import router as ngos_router
 
@@ -30,6 +31,7 @@ app.include_router(kitchens_router)
 app.include_router(ngos_router)
 app.include_router(delivery_personnel_router)
 app.include_router(food_items_router)
+app.include_router(forecasts_router)
 app.include_router(admin_router)
 
 
