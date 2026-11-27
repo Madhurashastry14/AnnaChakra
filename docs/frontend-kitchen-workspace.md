@@ -8,7 +8,7 @@ The kitchen workspace is a protected React/Vite frontend for `KITCHEN_STAFF` acc
 |---|---|
 | `/kitchen` | Entry point; redirects to the dashboard, or to setup when the account has no kitchen |
 | `/kitchen/setup` | Create the kitchen profile with address, phone and map coordinates |
-| `/kitchen/dashboard` | Overview of forecasts, meals, waste and insights |
+| `/kitchen/dashboard` | Overview of forecasts, meals, waste, insights and redistribution metrics |
 | `/kitchen/menu-planner` | Smart menu recommendations and forecast handoff |
 | `/kitchen/forecast` | Create a demand forecast and review quantities and ingredients |
 | `/kitchen/forecasts` | Forecast history |
@@ -21,10 +21,14 @@ The kitchen workspace is a protected React/Vite frontend for `KITCHEN_STAFF` acc
 | `/kitchen/waste-logs/new` | Log waste manually, from a scanner result, or from a meal-record draft |
 | `/kitchen/waste-logs/:id` | Waste log detail and safety re-screening |
 | `/kitchen/waste-logs/:id/edit` | Edit a waste log |
+| `/kitchen/surplus` | Available, pending, expired and ineligible unserved batches |
+| `/kitchen/matching` | Select eligible batches and review backend-ranked NGO matches |
 | `/kitchen/analytics` | Waste intelligence, rates, trends and insights |
 | `/kitchen/recommendations` | Portion recommendations |
-| `/kitchen/delivery` | Delivery personnel management |
-| `/kitchen/donations` | Honest unavailable state for donation matching |
+| `/kitchen/donations` | Kitchen donation offers and status filters |
+| `/kitchen/donations/new` | Confirm a donation offer for a selected NGO |
+| `/kitchen/donations/:id` | Donation items, lifecycle timeline and permitted kitchen actions |
+| `/kitchen/delivery` | Assignments, dispatch/delivery actions and delivery personnel management |
 | `/kitchen/settings` | Kitchen profile and account settings |
 
 Unknown `/kitchen/*` routes render an in-workspace not-found page.
@@ -36,6 +40,9 @@ Unknown `/kitchen/*` routes render an in-workspace not-found page.
 - A missing kitchen (`404` from `/kitchens/me`) redirects to `/kitchen/setup` instead of showing an error.
 - The workspace reuses the landing page’s cream and green identity and adds a scoped `src/styles/kitchen.css` design system.
 - All operational values shown in the workspace come from API responses. No forecasts, analytics, safety results, donations, assignments or history are fabricated.
+- Redistribution reads and actions use the existing `/api/v1` endpoints through the centralized authenticated API client. Offer creation rechecks current eligible batch availability; backend validation remains authoritative.
+- The matching map shows backend-provided coordinates only. Distance and travel duration are estimates, not actual route or live GPS information.
+- Redistribution quantities remain separate by catalogue unit. Dashboard impact metrics use completed receipt quantities and do not estimate people fed, food mass or carbon savings.
 
 ## Safety and measurement rules
 
@@ -63,10 +70,12 @@ Unknown `/kitchen/*` routes render an in-workspace not-found page.
 | `services/wasteLogs.js` | `GET/POST /api/v1/waste-logs`, `GET/PATCH /api/v1/waste-logs/{id}`, `POST /api/v1/waste-logs/{id}/safety-check` |
 | `services/analytics.js` | `GET /api/v1/analytics/waste-summary`, `food-acceptance`, `waste-trends`, `waste-insights`, `portion-recommendations` |
 | `services/deliveryPersonnel.js` | `GET/POST /api/v1/delivery-personnel`, `GET/PATCH/DELETE /api/v1/delivery-personnel/{id}` |
+| `services/redistribution.js` | `GET /api/v1/waste-logs/available-surplus`, `POST /api/v1/matches`, `/api/v1/donations` lifecycle routes, `GET /api/v1/deliveries`, `GET /api/v1/analytics/redistribution-summary` |
 
 ## Limitations
 
-- Donation matching, donation records and delivery assignment/dispatch endpoints are not part of the current backend build. The Donations page says so, and Delivery shows personnel management only.
+- The matching response includes suggested food allocations and compatibility reasons, but not the NGO requirement’s full accepted-category or dietary-preference fields. The kitchen UI can show foods allocated by the backend, not the complete requirement record.
+- The backend exposes no actual-route verification or live GPS tracking. Delivery actions are status updates, not location tracking.
 - The scanner may return `NOT_ATTEMPTED`, `UNSUPPORTED_FOOD`, `UNSUITABLE_IMAGE` or `DETECTION_FAILED`. The UI asks for manual quantity confirmation instead of inventing a count.
 - Kitchen verification is read-only in the workspace. Only an administrator can change verification status.
 - Analytics can be insufficient or unavailable until enough measured meal records exist. The UI shows that state rather than filling gaps.

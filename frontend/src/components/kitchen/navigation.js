@@ -9,6 +9,7 @@ import {
   Trash2,
   TrendingUp,
   Truck,
+  Search,
 } from "lucide-react";
 
 export const KITCHEN_NAV_GROUPS = [
@@ -25,6 +26,8 @@ export const KITCHEN_NAV_GROUPS = [
       { to: "/kitchen/meal-records", label: "Meal Records", icon: ClipboardList },
       { to: "/kitchen/scanner", label: "AI Food Scanner", icon: ScanLine },
       { to: "/kitchen/waste-logs", label: "Waste Logs", icon: Trash2 },
+      { to: "/kitchen/surplus", label: "Available Surplus", icon: HandHeart },
+      { to: "/kitchen/matching", label: "Find an NGO", icon: Search },
     ],
   },
   {
@@ -57,6 +60,8 @@ const PAGE_RULES = [
   { test: (path) => /^\/kitchen\/meal-records\/\d+$/.test(path), section: "Operations", title: "Meal Record Detail" },
   { test: (path) => path === "/kitchen/scanner", section: "Operations", title: "AI Food Scanner" },
   { test: (path) => path === "/kitchen/waste-logs", section: "Operations", title: "Waste Logs" },
+  { test: (path) => path === "/kitchen/surplus", section: "Operations", title: "Available Surplus" },
+  { test: (path) => path === "/kitchen/matching", section: "Operations", title: "Find an NGO" },
   { test: (path) => path === "/kitchen/waste-logs/new", section: "Operations", title: "Log Waste" },
   { test: (path) => /^\/kitchen\/waste-logs\/\d+\/edit$/.test(path), section: "Operations", title: "Edit Waste Log" },
   { test: (path) => /^\/kitchen\/waste-logs\/\d+$/.test(path), section: "Operations", title: "Waste Log Detail" },
@@ -64,6 +69,8 @@ const PAGE_RULES = [
   { test: (path) => path === "/kitchen/recommendations", section: "Insights", title: "Portion Recommendations" },
   { test: (path) => path === "/kitchen/delivery", section: "Redistribution", title: "Delivery Personnel" },
   { test: (path) => path === "/kitchen/donations", section: "Redistribution", title: "Donations" },
+  { test: (path) => path === "/kitchen/donations/new", section: "Redistribution", title: "Create Donation Offer" },
+  { test: (path) => /^\/kitchen\/donations\/\d+$/.test(path), section: "Redistribution", title: "Donation Details" },
   { test: (path) => path === "/kitchen/settings", section: "Account", title: "Kitchen Settings" },
 ];
 
