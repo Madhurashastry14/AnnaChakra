@@ -42,3 +42,6 @@ Thumbs.db
 
 # Generated forecasting reports, plots, and models
 ml/artifacts/forecasting/
+
+# Generated vision manifests, reports and weights
+ml/artifacts/vision/
