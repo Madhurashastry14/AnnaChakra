@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 def predict_menu_artifact(path, rows, meal_date, *, demo=False, version=None):
     try:
         from ml.forecasting.history import HISTORY_WINDOW_DAYS
-        from ml.forecasting.menu_features import FEATURE_SCHEMA, menu_model_inputs
+        from ml.forecasting.menu_features import CATEGORIES, FEATURE_SCHEMA, menu_model_inputs
         from ml.forecasting.menu_train import constrained_predictions
 
         if (not rows or any(row["kitchen_key"].startswith("demo-") != demo for row in rows)
@@ -32,8 +32,9 @@ def predict_menu_artifact(path, rows, meal_date, *, demo=False, version=None):
                                   or meal_date <= date.fromisoformat(metadata["evaluation_end_date"])))):
             return None
         supported = metadata["supported_categories"]
-        if not all(row[feature] in categories for row in rows
-                   for feature, categories in supported.items()):
+        if set(supported) != set(CATEGORIES) or not all(
+            row[feature] in categories for row in rows for feature, categories in supported.items()
+        ):
             return None
         predictions = constrained_predictions(rows, bundle["pipeline"].predict(menu_model_inputs(rows)))
         return predictions, metadata["version"]

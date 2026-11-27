@@ -1,52 +1,45 @@
-﻿# Demand forecasting
+﻿# Menu-aware demand forecasting
 
-## Real-data retraining
+## Catalogue and forecasting behavior
 
-Install backend and ML requirements in the Python 3.12 environment. From the repository root, add `backend` to `PYTHONPATH` and run `python -m ml.forecasting.retrain` with the backend database settings available as environment variables. Alternatively, start in `backend`, add the repository root to `PYTHONPATH`, and use the backend's existing `.env` configuration.
+From `backend`, apply `python -m alembic upgrade head` and run `python -m scripts.seed_food_items`. The seed command adds missing foods and classifies existing unclassified seed items by name while preserving IDs and existing classifications. Administrators can adjust roles, compatibility, uptake, and preference weights through the catalogue API.
 
-A candidate requires at least 300 eligible dishes with matching forecasts, 40 distinct meal dates, and two kitchens. Supervised rows use the forecast's expected attendance. Valid unlinked meals can contribute earlier observations for historical features. The served quantity is prepared quantity minus unserved leftovers.
+Choice menus allocate every expected attendee to exactly one main dish. Catalogue weights default to equal shares. Largest-remainder ties follow the requested dish order. Fixed meals allocate all expected attendees to each main. Non-main uptake defaults to 75% and can be configured per dish. A compatible accompaniment uses the pooled diners from its matching selected mains. Fixed meals count each eligible diner once per accompaniment. With configured compatibility and no match, the accompaniment gets zero. Without configured compatibility, the estimate applies its uptake to total attendance and includes a warning. Unclassified items are treated as mains for forecasting and flagged in the response.
 
-The model must improve WAPE by more than 2% relative to both catalogue and local-history baselines on validation and test data, with at least 20 evaluated rows per supported unit in each split. When an active model exists, the candidate must also beat its WAPE for every incumbent unit on at least 20 shared, supported test observations per unit strictly after the incumbent's last evaluation date. These are MVP activation thresholds. They can defer replacement until sufficient new feedback accumulates.
-
-Candidates receive unique versions and are registered in PostgreSQL. An advisory transaction lock serializes activation, and the existing partial unique index enforces one active version per model name. Preserve the artifact directory across backend deployments. Joblib artifacts must originate from the local training commands. Saving feedback leaves the active model unchanged.
+Historical choice preference uses served amounts divided by each historical catalogue portion. It prioritizes exact menus for the meal type, then similar competing mains for the meal type, then broader choice history for the same kitchen. The lookback is 90 days and the default smoothing constant is 10. Incomplete, shortage-affected, fixed-mode, unknown-mode, and zero-attendance meals do not contribute to choice shares. A complete legacy single-dish meal can inform the serving rate for a future single main. Any inferred diner equivalents are based on aggregate portions.
 
 ## Local experiments
 
-Run these commands from the repository root with the project virtual environment active.
+From the repository root with the Python 3.12 environment active:
 
 ```powershell
 python -m pip install -r backend/requirements.txt -r ml/requirements.txt
-python -m ml.forecasting.inspect_dataset
 python -m ml.forecasting.generate_dataset
-python -m ml.forecasting.train
-python -m ml.forecasting.demo demo-1 2025-06-15 LUNCH "Steamed Rice" 150
+python -m ml.forecasting.train --experiment menu
+python -m ml.forecasting.demo demo-1 2025-06-15 LUNCH Chapati 200 --with "Steamed Rice" --with Sambar
 ```
 
-The inspected workbook and generated CSV live under `ml/datasets/forecasting/`. Training writes separate Joblib bundles, metadata, actual-versus-predicted plots, and `evaluation_results.json` to `ml/artifacts/forecasting/`. The demo CLI only accepts synthetic kitchen identities. The authenticated HTTP API only accepts registered kitchens.
+The generated CSV stays in `ml/datasets/forecasting/`. The local output in `ml/artifacts/forecasting/` includes `menu_demo_model.joblib`, `menu_demo_metadata.json`, `menu_evaluation_results.json`, and the actual-versus-predicted plot. Use `--experiment restaurant` for the independent restaurant sales experiment or `--experiment all` for both.
 
-Training splits unique dates 70%/15%/15% in order and fits preprocessing on the training split. Validation and test use observations from strictly earlier dates, including completed meals from earlier in their own split. This measures a walk-forward deployment with ongoing feedback. It assumes linked expected attendance was entered before cooking and earlier-date feedback is available by prediction time. Observational weather and temperature are omitted since forecast-time availability is unverified.
+Training splits unique dates 70%/15%/15% in chronological order and fits preprocessing on the training partition. All dishes from a meal stay together. Walk-forward evaluation assumes prior-date feedback is available and linked forecasts contain genuinely pre-meal attendance estimates. The model learns choice shares for competing mains and effective diner-equivalent rates for other dishes. Choice scores are normalized before allocation. An accompaniment's recipients are capped by the model's corresponding main allocation.
 
-### Observed holdout results
+### Seed 42 synthetic test holdout
 
-| Dataset and quantity unit | XGBoost MAE | Catalogue MAE | Local history MAE | Trailing 30 MAE |
+| Quantity unit | Independent MAE | Equal allocation MAE | Kitchen history MAE | XGBoost MAE |
 |---|---:|---:|---:|---:|
-| Restaurant, undocumented | 51.09 | | | 50.71 |
-| Synthetic institution, serving | 13.45 | 27.36 | 15.40 | |
-| Synthetic institution, piece | 34.66 | 64.78 | 38.66 | |
+| Piece | 159.09 | 40.59 | 24.62 | 18.32 |
+| Serving | 58.78 | 17.46 | 9.90 | 7.41 |
 
-RMSE, WAPE, and R² by split and quantity unit are in the generated evaluation report. Synthetic accuracy describes only the simulator.
+Mean absolute choice-share error was 0.1032 for equal allocation, 0.0531 for kitchen history, and 0.0348 for XGBoost. XGBoost, equal allocation, and kitchen history each had zero violations across 394 choice meals. Independent allocation exceeded attendance in 357. The generated report includes RMSE, WAPE, and per-dish results. These results describe simulated kitchens.
 
-## Backend use and verification
+## Real-data retraining
 
-Run `python -m alembic upgrade head` from `backend` before serving requests. The forecasting and feedback paths are documented in [the API contract](API_CONTRACT.md). Forecasts use a 90-day prior history window and smoothing constant of 10 by default. They round recommendations upward, then calculate ingredients using the rounded amount. Older forecasts created before the prediction-details migration reconstruct ingredients from the current catalogue and report the missing historical count as null.
+Run `python -m ml.forecasting.retrain` from the root with `backend` on `PYTHONPATH` and the database settings in the environment. Alternatively, run from `backend` with the project root on `PYTHONPATH` and the existing backend settings.
 
-From the root with the project environment active:
+A candidate requires at least 300 eligible dishes from linked forecasts, 40 distinct meal dates, and two kitchens. Eligible manual feedback can contribute prior history. It does not provide supervised rows because it has no forecasted attendance. Known serving mode and complete, classified, uncensored menus are required. Feedback writes do not trigger training.
 
-```powershell
-${env:PYTHONPATH} = (Resolve-Path backend).Path
-${env:DATABASE_URL} = "sqlite://"
-${env:SECRET_KEY} = "local-only-test-secret-at-least-32-bytes"
-python -m pytest backend/tests ml/tests
-```
+Promotion requires zero ML choice-allocation violations and more than 2% lower WAPE than each baseline on validation and test, with at least 20 observations per supported unit in each split. A compatible incumbent must also be beaten on at least 20 shared, fresh test observations per incumbent unit, after its last evaluation date. The registry uses the `institutional_menu_demand` name and serializes promotion under a PostgreSQL advisory lock. The earlier independent-dish registry remains separate. Retain versioned artifacts on trusted local storage. Use `python -m ml.forecasting.retrain --rollback VERSION` to restore a previously active, eligible menu-model artifact.
 
-The PostgreSQL smoke test is opt-in. From `backend`, use an isolated PostgreSQL database or a database role allowed to create schemas, set `FORECAST_TEST_POSTGRES=1`, and run `python -m pytest tests/test_forecast_postgres.py` with the backend settings loaded. It applies migrations and exercises forecast, feedback, and retraining extraction in a transaction-scoped schema that is rolled back.
+## Backend verification
+
+See the additive fields in the [API contract](API_CONTRACT.md). Use the existing ML and backend test suites from the repository root with `backend` on `PYTHONPATH` and local test database settings. The opt-in PostgreSQL smoke test applies the migration chain and exercises forecast and feedback endpoints in a rollback-only schema. Run `python -m pytest tests/test_forecast_postgres.py` from `backend` with `FORECAST_TEST_POSTGRES=1` and a PostgreSQL role allowed to create schemas.

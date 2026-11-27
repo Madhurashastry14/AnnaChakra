@@ -1,4 +1,4 @@
-﻿"""Train independent local forecasting experiments with walk-forward evaluation."""
+"""Train independent local forecasting experiments with walk-forward evaluation."""
 import argparse
 import json
 from datetime import datetime, timezone
@@ -14,7 +14,6 @@ from ml.forecasting.evaluate import comparison_plot, evaluate
 from ml.forecasting.features import (
     CALENDAR, HISTORY, INSTITUTIONAL_KEYS, RESTAURANT_KEYS, chronological_split, temporal_features,
 )
-from ml.forecasting.generate_dataset import SYNTHETIC_DATA
 from ml.forecasting.history import HISTORY_WINDOW_DAYS, blended_rate
 from ml.forecasting.inspect_dataset import WORKBOOK
 from ml.forecasting.preprocessing import build_preprocessor, model_inputs, restaurant_records
@@ -123,26 +122,27 @@ def fit_experiment(kind, records, *, source, synthetic, version):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=ARTIFACT_DIR)
+    parser.add_argument("--experiment", choices=["all", "menu", "restaurant"], default="all")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
-    restaurant = restaurant_records(pd.read_excel(WORKBOOK)).query("not censored").copy()
-    restaurant["serving_unit"] = "undocumented"
-    institutional = institutional_records(pd.read_csv(SYNTHETIC_DATA))
-    reports = {}
-    for kind, records, source in (
-        ("restaurant", restaurant, "Local Kaggle workbook; collection method and units unverified"),
-        ("institutional", institutional, "AnnaChakra simulator, seed 42"),
-    ):
+    if args.experiment in {"all", "restaurant"}:
+        restaurant = restaurant_records(pd.read_excel(WORKBOOK)).query("not censored").copy()
+        restaurant["serving_unit"] = "undocumented"
         bundle, test, predictions = fit_experiment(
-            kind, records, source=source, synthetic=kind == "institutional", version="experiment-v1",
+            "restaurant", restaurant,
+            source="Local Kaggle workbook; collection method and units unverified",
+            synthetic=False, version="experiment-v1",
         )
-        joblib.dump(bundle, args.output / f"{kind}_demand_model.joblib")
+        joblib.dump(bundle, args.output / "restaurant_demand_model.joblib")
         metadata = bundle["metadata"]
-        (args.output / f"{kind}_metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
-        comparison_plot(test, predictions["ML"], args.output / f"{kind}_actual_vs_predicted.png")
-        reports[kind] = metadata["metrics"]
-    (args.output / "evaluation_results.json").write_text(json.dumps(reports, indent=2), encoding="utf-8")
-
+        (args.output / "restaurant_metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+        comparison_plot(test, predictions["ML"], args.output / "restaurant_actual_vs_predicted.png")
+        (args.output / "evaluation_results.json").write_text(
+            json.dumps({"restaurant": metadata["metrics"]}, indent=2), encoding="utf-8",
+        )
+    if args.experiment in {"all", "menu"}:
+        from ml.forecasting.menu_train import run_demo_experiment
+        run_demo_experiment(args.output)
 
 if __name__ == "__main__":
     main()

@@ -302,18 +302,21 @@ def seed_food_catalogue(
         else:
             inserted += 1
 
-    foods = {food.name: food for food in db.scalars(select(FoodItem))}
+    foods = {food.name.casefold(): food for food in db.scalars(select(FoodItem))}
+    newly_classified = {}
     for definition in catalogue:
         name = definition["name"]
-        food = foods.get(name)
+        food = foods.get(name.casefold())
         role = seed_role(name)
         if food is None or role is None or food.food_role is not None:
             continue
         food.food_role = role
+        newly_classified[name] = food
+    for name, food in newly_classified.items():
         if name in ACCOMPANIMENTS and not food.compatible_main_food_item_ids:
             food.compatible_main_food_item_ids = [
-                foods[main].id for main in ACCOMPANIMENTS[name]
-                if main in foods and (foods[main].food_role or seed_role(main)) == "MAIN_DISH"
+                foods[main.casefold()].id for main in ACCOMPANIMENTS[name]
+                if main.casefold() in foods and foods[main.casefold()].food_role == "MAIN_DISH"
             ]
     db.commit()
     return inserted, skipped

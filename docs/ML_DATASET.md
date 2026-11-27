@@ -1,4 +1,4 @@
-﻿# Forecasting datasets
+# Forecasting datasets
 
 ## Restaurant workbook
 
@@ -17,6 +17,6 @@ The waste column label specifies kilograms. Units for prepared, sold, and remain
 
 ## Synthetic institutional records
 
-Run `python -m ml.forecasting.generate_dataset` from the repository root. The fixed-seed simulation generates 180 days of menus and quantities for eight demo kitchens and labels each row as synthetic. It writes a local CSV under the ignored forecasting datasets directory.
+Run `python -m ml.forecasting.generate_dataset` from the repository root. The fixed-seed simulation generates 180 days of menus and quantities for eight demo kitchens and labels each row as synthetic. It writes a local CSV under the ignored forecasting datasets directory. Meals include a unique menu ID, serving mode, catalogue roles, complete composition, compatibility, and simulated selected diners. In choice meals the main dishes partition actual attendance. Selected-diner counts are synthetic ground truth and are excluded from inference features.
 
 Served quantity equals prepared quantity minus unserved leftovers. For supervised training, exclude shortages and zero-attendance meals. Evaluation on synthetic data demonstrates pipeline functionality. Real-world forecasting accuracy requires representative, compatible records from actual institutional kitchens.

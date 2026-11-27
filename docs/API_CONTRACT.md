@@ -46,17 +46,21 @@ One organization per manager for MVP. Status PENDING, VERIFIED, REJECTED; only a
 ```
 Catalogue seeded by backend. `serving_unit` is `serving` or `piece`. Recipe quantities are illustrative defaults, not universal standards. Unknown recipes return an empty ingredients array. Day of week derived from date.
 
+Catalogue responses and admin create/update requests support nullable `food_role` (`MAIN_DISH`, `ACCOMPANIMENT`, `SIDE_DISH`, `DESSERT`, `BEVERAGE`), `uptake_rate` from 0 to 1 (default 0.75), positive `preference_weight` (default 1), and `compatible_main_food_item_ids` (default empty). Only accompaniments can reference compatible main dishes. The referenced IDs must be unique and already configured as main dishes.
+
 ## 4. Demand forecasting (kitchen UI)
 
 `POST /forecasts` — Kitchen, 201. Request:
 ```json
-{"meal_date":"2026-11-27","meal_type":"LUNCH","expected_people":200,"food_item_ids":[1,2]}
+{"meal_date":"2026-11-27","meal_type":"LUNCH","expected_people":200,"food_item_ids":[1,2],"menu_mode":"CHOICE_BASED"}
 ```
 Response:
 ```json
-{"id":1,"meal_date":"2026-11-27","meal_type":"LUNCH","expected_people":200,"model_version":null,"items":[{"food_item_id":1,"name":"Rice","serving_unit":"serving","predicted_servings":190.2,"recommended_servings":191,"prediction_method":"BASELINE","ingredients":[{"name":"Raw rice","quantity":14.325,"unit":"kg"}]}],"created_at":"2026-11-27T06:00:00Z"}
+{"id":1,"meal_date":"2026-11-27","meal_type":"LUNCH","expected_people":200,"menu_mode":"CHOICE_BASED","model_version":null,"items":[{"food_item_id":1,"name":"Rice","serving_unit":"serving","expected_people":200,"predicted_servings":100,"recommended_servings":100,"prediction_method":"BASELINE","historical_observation_count":0,"model_version":null,"ingredients":[{"name":"Raw rice","quantity":7.5,"unit":"kg"}],"warnings":["No eligible prior meal records for this dish and menu context."],"food_role":"MAIN_DISH","estimated_diners":100,"preference_share":0.5,"compatible_main_food_item_ids":[],"allocation_method":"CATALOGUE_PRIOR"}],"created_at":"2026-11-27T06:00:00Z"}
 ```
 Example shows one item for brevity; actual response includes every requested dish. Methods BASELINE, LOCAL_HISTORY, ML. model_version nullable when no trained model used. Each item also includes expected_people, historical_observation_count, model_version, and warnings. Recommendations round up and ingredients derive from recommended servings. Cold start uses catalogue defaults; local history adjusts demand; ML only used when suitable training data/model available. Meal types BREAKFAST, LUNCH, DINNER. Positive attendance, unique nonempty menu.
+
+`menu_mode` is optional on create and defaults to `CHOICE_BASED`. The choice mains' integer allocated diners sum to expected attendance. `FIXED_MEAL` allocates expected attendance to each main. For an accompaniment or other non-main dish, `estimated_diners` is the estimated number of recipients and may be fractional. `preference_share` is a 0–1 value before diner rounding for choice mains and null otherwise. `compatible_main_food_item_ids` lists the configured associations. `allocation_method` describes how the estimate was produced. Historical forecasts retain their saved quantities and return null for menu fields that were unavailable when saved.
 
 `GET /forecasts` — Kitchen list, optional meal_date. `GET /forecasts/{id}` — Kitchen detail. Both return forecast objects above.
 
@@ -66,7 +70,7 @@ Example shows one item for brevity; actual response includes every requested dis
 ```json
 {"forecast_id":1,"meal_date":"2026-11-27","meal_type":"LUNCH","actual_people":185,"items":[{"food_item_id":1,"prepared_servings":200,"leftover_servings":25,"plate_waste_servings":5,"shortage_occurred":false}]}
 ```
-Response: request fields plus `id`, `created_at`, and each item's `id`, `served_servings` (175), `consumed_servings` (170). `forecast_id` and `plate_waste_servings` nullable; consumed is null if plate waste unknown. Leftover means unserved surplus only. Nonnegative quantities; leftover <= prepared; plate waste <= served. Actual attendance may be zero; exclude zero-attendance and shortage records from naive per-person demand training. Demand target is served quantity, not consumed quantity. One record per linked forecast; dish IDs unique. Linked forecast must belong to kitchen and match date/type/menu. Records without a forecast are allowed. Meal dates must be today or earlier. Piece-based quantities must be whole numbers.
+Response: request fields plus `id`, `created_at`, and each item's `id`, `served_servings` (175), `consumed_servings` (170). `forecast_id` and `plate_waste_servings` nullable; consumed is null if plate waste unknown. Leftover means unserved surplus only. Nonnegative quantities; leftover <= prepared; plate waste <= served. Actual attendance may be zero; exclude zero-attendance and shortage records from naive per-person demand training. Demand target is served quantity, not consumed quantity. One record per linked forecast; dish IDs unique. Linked forecast must belong to kitchen and match date/type/menu. Linked feedback inherits the forecast's mode, and a conflicting explicit mode returns 422. Manual feedback can set optional `menu_mode` to `CHOICE_BASED` or `FIXED_MEAL`. Missing mode is returned as null and cannot inform competing choice shares. Meal dates must be today or earlier. Piece-based quantities must be whole numbers.
 
 `GET /meal-records` — Kitchen list; `GET /meal-records/{id}` — detail; `PATCH /meal-records/{id}` — same editable fields, disallow changes conflicting with linked waste/donation records. Store records for future retraining; saving a record does not automatically retrain a model.
 

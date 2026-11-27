@@ -134,25 +134,29 @@ def fit_menu_features(features, *, source, synthetic, version):
     return {"pipeline": pipeline, "metadata": metadata}, test, predictions
 
 
+def run_demo_experiment(output):
+    source = pd.read_csv(SYNTHETIC_DATA)
+    if not source.is_synthetic.eq(True).all():
+        raise ValueError("This command requires generated synthetic institutional records")
+    bundle, test, prediction = fit_menu_experiment(
+        source, source="AnnaChakra menu simulator, seed 42", synthetic=True, version=uuid4().hex,
+    )
+    output.mkdir(parents=True, exist_ok=True)
+    joblib.dump(bundle, output / DEMO_ARTIFACT.name)
+    (output / "menu_demo_metadata.json").write_text(
+        json.dumps(bundle["metadata"], indent=2), encoding="utf-8",
+    )
+    (output / "menu_evaluation_results.json").write_text(
+        json.dumps(bundle["metadata"]["metrics"], indent=2), encoding="utf-8",
+    )
+    comparison_plot(test, prediction, output / "menu_actual_vs_predicted.png")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=ARTIFACT_DIR)
     args = parser.parse_args()
-    source = pd.read_csv(SYNTHETIC_DATA)
-    if not source.is_synthetic.eq(True).all():
-        parser.error("This command requires generated synthetic institutional records")
-    bundle, test, prediction = fit_menu_experiment(
-        source, source="AnnaChakra menu simulator, seed 42", synthetic=True, version=uuid4().hex,
-    )
-    args.output.mkdir(parents=True, exist_ok=True)
-    joblib.dump(bundle, args.output / DEMO_ARTIFACT.name)
-    (args.output / "menu_demo_metadata.json").write_text(
-        json.dumps(bundle["metadata"], indent=2), encoding="utf-8",
-    )
-    (args.output / "menu_evaluation_results.json").write_text(
-        json.dumps(bundle["metadata"]["metrics"], indent=2), encoding="utf-8",
-    )
-    comparison_plot(test, prediction, args.output / "menu_actual_vs_predicted.png")
+    run_demo_experiment(args.output)
 
 
 if __name__ == "__main__":

@@ -99,9 +99,10 @@ def complete_examples(raw):
         if (first.menu_mode not in (CHOICE, FIXED) or group.food_role.isna().any()
                 or group[common].nunique(dropna=False).ne(1).any()):
             continue
-        if (len(group) != group.food_item_name.nunique()
-                or set(group.food_item_name) != set(json.loads(first.menu_food_items))):
+        menu_keys = json.loads(first.menu_food_items)
+        if len(group) != len(menu_keys) or set(group.food_item_name) != set(menu_keys):
             continue
+        group = group.set_index("food_item_name", drop=False).loc[menu_keys]
         if first.actual_people % 1 or (pd.notna(first.expected_people) and first.expected_people % 1):
             continue
         date = first.meal_date.date()

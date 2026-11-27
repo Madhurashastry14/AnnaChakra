@@ -30,3 +30,25 @@ def test_shortage_censors_entire_menu():
     source.loc[source.menu_id.eq(meal_id), "shortage_occurred"] = False
     source.loc[source.index[0], "shortage_occurred"] = True
     assert meal_id not in set(training_menu_features(source).menu_id)
+
+
+def test_model_recipient_caps_are_based_on_the_predicted_main_allocation():
+    from ml.forecasting.menu import ACCOMPANIMENT, CHOICE, MAIN
+    from ml.forecasting.menu_train import constrained_predictions
+    import pytest
+
+    rows = [
+        {"food_item_name": key, "food_role": role, "default_servings_per_person": portion,
+         "compatible_keys": compatible, "history_count": 0, "expected_people": 7,
+         "menu_mode": CHOICE}
+        for key, role, portion, compatible in (
+            ("chapati", MAIN, 3, ()), ("rice", MAIN, 1, ()),
+            ("sambar", ACCOMPANIMENT, 1, ("rice",)),
+        )
+    ]
+    predictions = constrained_predictions(rows, [3.0, 1.0, 1.0])
+    assert predictions["chapati"].quantity == 15
+    assert predictions["rice"].diners == predictions["sambar"].diners == 2
+    assert constrained_predictions(rows, [0.0, -1.0, 1.0])["chapati"].diners == 4
+    with pytest.raises(ValueError, match="finite"):
+        constrained_predictions(rows, [1, float("inf"), 0])

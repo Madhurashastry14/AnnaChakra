@@ -1,4 +1,4 @@
-﻿"""Opt-in PostgreSQL smoke test with transactional schema isolation."""
+"""Opt-in PostgreSQL smoke test with transactional schema isolation."""
 import io
 import os
 from datetime import date, timedelta
@@ -14,10 +14,12 @@ from sqlalchemy.orm import sessionmaker
 from app.core.database import engine, get_db
 from app.core.security import create_access_token
 from app.main import app
-from app.models.enums import ServingUnit, UserRole
+from app.models.enums import UserRole
 from app.models.food import FoodItem
 from app.models.organization import Kitchen
 from app.models.user import User
+from scripts.seed_food_items import seed_food_catalogue
+from sqlalchemy import select
 
 
 @pytest.mark.skipif(os.getenv("FORECAST_TEST_POSTGRES") != "1", reason="Requires PostgreSQL")
@@ -43,13 +45,14 @@ def test_migrated_postgres_forecast_and_retraining_extraction(monkeypatch):
             with factory.begin() as session:
                 user = User(name="Test staff", email="forecast-test@example.invalid",
                             password_hash="unused", role=UserRole.KITCHEN_STAFF)
-                food = FoodItem(name="Rice", category="main", serving_unit=ServingUnit.SERVING,
-                                is_vegetarian=True, default_servings_per_person=1)
-                session.add_all([user, food])
+                session.add(user)
                 session.flush()
                 session.add(Kitchen(manager_id=user.id, name="Test kitchen", address="Local",
                                     latitude=0, longitude=0, phone="1234"))
-                user_id, food_id = user.id, food.id
+                user_id = user.id
+            with factory() as session:
+                seed_food_catalogue(session)
+                food_id = session.scalar(select(FoodItem.id).where(FoodItem.name == "Steamed Rice"))
 
             def get_session():
                 with factory() as session:
@@ -76,6 +79,7 @@ def test_migrated_postgres_forecast_and_retraining_extraction(monkeypatch):
                 })
                 assert response.status_code == 201, response.text
                 assert response.json()["items"][0]["served_servings"] == 75
+                assert response.json()["menu_mode"] == "CHOICE_BASED"
                 latest = client.post("/api/v1/forecasts", json=menu | {
                     "meal_date": date.today().isoformat(),
                 })
@@ -86,6 +90,7 @@ def test_migrated_postgres_forecast_and_retraining_extraction(monkeypatch):
                 records = extract_records(session)
                 assert len(records) == 1
                 assert records.iloc[0].expected_people == 100
+                assert records.iloc[0].menu_mode == "CHOICE_BASED"
             assert "Insufficient" in retrain(factory)
         finally:
             transaction.rollback()
