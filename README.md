@@ -280,3 +280,7 @@ npm run build
 ## Food recognition and waste screening
 
 See the [vision and waste setup guide](docs/VISION_WASTE.md) for local model artifacts, private uploads, the kitchen workflow, and safety policy configuration.
+
+## Waste intelligence and menu planning
+
+See the [waste intelligence guide](docs/WASTE_INTELLIGENCE.md) for visible-piece counting, meal-linked waste drafts, kitchen analytics, and recommendation workflows.

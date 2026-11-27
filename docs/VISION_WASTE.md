@@ -59,3 +59,7 @@ The screen requires verified kitchen status, evidence that food was unserved, co
 `PENDING` requires more evidence, a verified kitchen, an approved policy, or a fresh screen. `INELIGIBLE` includes plate waste, spoiled food, contamination, failed limits, and expiration. `ELIGIBLE` means the record passed the configured screen. It does not certify food as safe. Reads recheck current policy, kitchen status, and expiration. Persisted legacy evidence stays intact and cannot confer eligibility. No matching, dispatch, receipt, or donation management is implemented here.
 
 Future donation code must lock the waste row, call `screening_for_use` with fresh kitchen and evidence state immediately before matching, dispatch, and receipt, and enforce current availability and reservation totals transactionally. Existing reservations and completed donations block quantity, food, type, timestamp, or reference changes. Safety evidence can still downgrade availability without altering those historical allocations.
+
+## Experimental quantity suggestions
+
+The menu and waste intelligence extension can prefill a visible-piece count for suitable images. Staff confirm every saved quantity. Bulk foods and ambiguous photos use manual entry. [Counting and meal-feedback workflow](WASTE_INTELLIGENCE.md).
