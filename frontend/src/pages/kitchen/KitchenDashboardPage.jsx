@@ -363,7 +363,7 @@ export default function KitchenDashboardPage() {
           value={
             !hasNumeric(summary, "total_plate_waste") ? "Not measured" : (
               <span className="k-metric-split">
-                {formatQuantity(plateWaste.serving, "serving")}
+                <span>{formatQuantity(plateWaste.serving, "serving")}</span>
                 <small>{formatQuantity(plateWaste.piece, "piece")}</small>
               </span>
             )

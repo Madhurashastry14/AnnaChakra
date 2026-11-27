@@ -1375,9 +1375,21 @@
 .k-metric-success .k-metric-icon { color: var(--k-green); background: var(--k-green-soft); }
 
 .k-metric-split {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  text-align: left;
+}
+
+.k-metric-split > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.k-metric-split > small {
+  font-size: 0.65em;
+  line-height: 1.3;
 }
 
 .k-metric-unserved .k-metric-split {
