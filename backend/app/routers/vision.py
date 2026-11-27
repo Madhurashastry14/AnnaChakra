@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
@@ -11,8 +11,10 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import get_current_kitchen
 from app.models.organization import Kitchen
-from app.schemas.vision import VisionResponse
-from app.services.vision import accept_upload, image_path, owned_prediction
+from app.schemas.forecast import PositiveID
+from app.schemas.vision import CountResponse, VisionResponse
+from pydantic import BaseModel, ConfigDict
+from app.services.vision import accept_upload, image_path, owned_prediction, recount
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +65,21 @@ def recognize(image: UploadFile = File(...), kitchen: Kitchen = Depends(get_curr
         logger.error("Vision upload failed (%s)", type(exc).__name__)
         raise HTTPException(500, "Unable to save the image") from exc
     return result | {"confidence_score": result["confidence"]}
+
+
+class CountRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    food_item_id: PositiveID
+
+
+@router.post("/predictions/{prediction_id}/count", response_model=CountResponse)
+def count_selected(prediction_id: str, request: CountRequest,
+                   kitchen: Kitchen = Depends(get_current_kitchen), db: Session = Depends(get_db)):
+    try:
+        return recount(db, kitchen.id, prediction_id, request.food_item_id)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(500, "Unable to save the count") from exc
 
 
 @router.get("/images/{prediction_id}")
