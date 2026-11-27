@@ -28,6 +28,7 @@ def create(request: OfferRequest, kitchen: Kitchen = Depends(require_verified_ki
 @router.get("")
 def listing(status: DonationStatus | None = None, date_from: date | None = None,
             date_to: date | None = None, kitchen_id: int | None = None, ngo_id: int | None = None,
+            expired_only: bool = False, failed_only: bool = False,
             limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0),
             user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
     if date_from and date_to and date_from > date_to:
@@ -37,6 +38,10 @@ def listing(status: DonationStatus | None = None, date_from: date | None = None,
     query = select(Donation).where(*donations.scope_conditions(db, user))
     now = now_utc()
     expired = (Donation.status == DonationStatus.PENDING) & or_(Donation.expires_at.is_(None), Donation.expires_at <= now)
+    if expired_only:
+        query = query.where(expired)
+    if failed_only:
+        query = query.where(Donation.failed_at.is_not(None))
     if status == DonationStatus.CANCELLED:
         query = query.where(or_(Donation.status == status, expired))
     elif status == DonationStatus.PENDING:

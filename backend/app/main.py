@@ -21,6 +21,7 @@ from app.routers.kitchens import router as kitchens_router
 from app.routers.matches import router as matches_router
 from app.routers.meal_records import router as meal_records_router
 from app.routers.menu import router as menu_router
+from app.routers.redistribution_analytics import router as redistribution_analytics_router
 from app.routers.ngos import router as ngos_router
 from app.routers.ngo_requirements import router as ngo_requirements_router
 from app.routers.vision import router as vision_router
@@ -73,6 +74,7 @@ app.include_router(ngo_requirements_router)
 app.include_router(matches_router)
 app.include_router(donations_router)
 app.include_router(deliveries_router)
+app.include_router(redistribution_analytics_router)
 app.include_router(delivery_personnel_router)
 app.include_router(food_items_router)
 app.include_router(forecasts_router)
