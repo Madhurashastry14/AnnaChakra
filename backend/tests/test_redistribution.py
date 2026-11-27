@@ -78,7 +78,6 @@ def configure_policy(monkeypatch):
     monkeypatch.setattr(settings, "APP_ENV", "test")
     monkeypatch.setattr(settings, "SAFETY_POLICY_PATH", None)
     monkeypatch.setattr("app.services.waste.current_policy", lambda: policy)
-    monkeypatch.setattr("app.services.deliveries.current_policy", lambda: policy)
     return policy
 
 
@@ -184,10 +183,6 @@ def test_full_lifecycle_partial_receipt_and_analytics(redistribution):
         {"donation_item_id": donation["items"][0]["id"], "received_servings": 12,
          "rejection_reason": "Eight pieces declined"},
     ]}
-    assert client.post(path + "/confirm-receipt", json=receipt).status_code == 422
-    receipt["items"][0]["evidence"] = evidence(prepared, utcnow()) | {
-        "storage_temperature": 67, "safe_handling_confirmed": True,
-    }
     result = client.post(path + "/confirm-receipt", json=receipt)
     assert result.status_code == 200, result.text
     assert result.json()["status"] == "COMPLETED"

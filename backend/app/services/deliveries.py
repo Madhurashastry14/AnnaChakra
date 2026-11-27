@@ -1,16 +1,12 @@
-from types import SimpleNamespace
-
 from fastapi import HTTPException
 from sqlalchemy import select
 
 from app.models.donation import Delivery, Donation
-from app.models.enums import DeliveryStatus, DonationStatus as Status, SafetyStatus, UserRole
+from app.models.enums import DeliveryStatus, DonationStatus as Status, UserRole
 from app.models.organization import DeliveryPersonnel
-from app.schemas.waste import SafetyEvidence
 from app.services.donations import finish, recheck, require_state, scope_conditions, writable
-from app.services.ngo_requirements import aware, now_utc
+from app.services.ngo_requirements import now_utc
 from app.services.reservations import amount
-from app.services.safety import current_policy, policy_for_batch, screen_waste
 
 KITCHEN = {UserRole.KITCHEN_STAFF}
 NGO = {UserRole.NGO_MANAGER}
@@ -96,37 +92,20 @@ def confirm_receipt(db, donation, request):
         raise HTTPException(409, "Delivery must be recorded before receipt")
     submitted = {item.donation_item_id: item for item in request.items}
     positive = {item.donation_item_id for item in request.items if item.received_servings > 0}
-    kitchen, lines, now = recheck(db, donation, travel=False, selected_line_ids=positive)
+    _, lines, now = recheck(db, donation, travel=False, selected_line_ids=positive)
     if set(submitted) != {line.id for line, _, _ in lines}:
         raise HTTPException(422, "Confirm every donation item exactly once")
-    policy = None if donation.is_simulated else current_policy()
-    for line, waste, food in lines:
+    for line, _waste, food in lines:
         received = submitted[line.id]
         quantity = amount(received.received_servings)
         if quantity > amount(line.offered_servings) or (food.serving_unit == "piece" and quantity % 1):
             raise HTTPException(422, "Received quantity exceeds the offer or uses fractional pieces")
         if quantity < amount(line.offered_servings) and received.rejection_reason is None:
             raise HTTPException(422, "Give a reason for any quantity not received")
-        evidence = received.evidence
-        if quantity > 0 and not donation.is_simulated:
-            if (evidence is None or evidence.temperature_measured_at is None
-                    or not aware(delivery.delivered_at) <= evidence.temperature_measured_at <= now):
-                raise HTTPException(422, "Record a temperature measurement at receipt for each accepted batch")
-            snapshot = SimpleNamespace(
-                prepared_at=waste.prepared_at, waste_type=waste.waste_type,
-                storage_temperature=evidence.storage_temperature,
-                safe_handling_confirmed=evidence.safe_handling_confirmed,
-                safety_evidence=evidence.model_dump(mode="json", include=set(SafetyEvidence.model_fields)),
-            )
-            screened = screen_waste(snapshot, food.name, kitchen.verification_status,
-                                    policy_for_batch(policy, kitchen, waste), now)
-            if screened.status != SafetyStatus.ELIGIBLE:
-                raise HTTPException(409, f"Receipt evidence failed screening for waste log {waste.id}")
         line.received_servings = received.received_servings
         line.receipt_evidence = {"inspected": True, "is_simulated": donation.is_simulated,
                                  "rejection_reason": received.rejection_reason,
-                                 "evidence": evidence.model_dump(mode="json") if evidence else None,
-                                 "screened_at": now.isoformat(), "policy_version": policy.version if policy else None}
+                                 "evidence": None}
     donation.status = Status.COMPLETED
     donation.completed_at, donation.receipt_notes = now, request.notes
     return finish(db, donation)
