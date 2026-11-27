@@ -1,4 +1,4 @@
-﻿from io import BytesIO
+from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
 
@@ -74,17 +74,22 @@ def accept_upload(db, kitchen_id, upload):
     row = VisionPrediction(id=prediction_id, kitchen_id=kitchen_id, image_format=format_name, result=result)
     path = image_path(row)
     temporary = path.with_suffix(".tmp")
+    temporary_created = image_created = False
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         with temporary.open("xb") as stream:
+            temporary_created = True
             # Re-encode decoded RGB to strip original EXIF and untrusted trailing data.
             image.save(stream, format=format_name)
-        temporary.replace(path)
+        temporary.rename(path)
+        image_created = True
         db.add(row)
         db.commit()
     except Exception:
         db.rollback()
-        temporary.unlink(missing_ok=True)
-        path.unlink(missing_ok=True)
+        if temporary_created:
+            temporary.unlink(missing_ok=True)
+        if image_created:
+            path.unlink(missing_ok=True)
         raise
     return {"prediction_id": prediction_id, "image_id": prediction_id, **result}

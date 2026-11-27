@@ -1,4 +1,4 @@
-﻿"""Evaluate documented holding evidence against an operator-approved policy."""
+"""Evaluate documented holding evidence against an operator-approved policy."""
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -116,7 +116,7 @@ def screen_waste(record, food_name, kitchen_status, policy, now=None):
     if rule is None:
         pending.append("No approved holding limits are configured for this food.")
     else:
-        deadline = prepared + timedelta(minutes=rule.max_holding_minutes) if prepared else None
+        deadline = prepared + timedelta(minutes=rule.max_holding_minutes) if prepared and prepared <= now else None
         if deadline is not None and now >= deadline:
             failed.append("The configured holding deadline has passed.")
         if method not in (None, "UNKNOWN") and method != rule.storage_method:

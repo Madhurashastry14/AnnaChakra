@@ -63,7 +63,10 @@ def _validate_accounting(db, kitchen_id, request, current):
     )
     if current is not None:
         query = query.where(WasteLog.id != current.id)
-    total = fsum([*db.scalars(query), request.confirmed_servings])
+    try:
+        total = fsum([*db.scalars(query), request.confirmed_servings])
+    except OverflowError as exc:
+        raise HTTPException(409, "Logged waste exceeds the recorded quantity for this meal item") from exc
     if total > cap and not isclose(total, cap, rel_tol=1e-12, abs_tol=1e-9):
         raise HTTPException(409, "Logged waste exceeds the recorded quantity for this meal item")
 
@@ -88,6 +91,14 @@ def screening_for_use(row, food, kitchen, now=None):
         if row.safety_status == SafetyStatus.INELIGIBLE or legacy_expired:
             reason = "The legacy screen rejected this record or its deadline has passed."
             return Screening(SafetyStatus.INELIGIBLE, [reason], now, None, result.policy_version)
+    if result.status == SafetyStatus.ELIGIBLE:
+        deadline = utc(row.safe_until)
+        if (row.safety_status != SafetyStatus.ELIGIBLE or deadline is None or now >= deadline
+                or row.safety_policy_version != result.policy_version):
+            return Screening(SafetyStatus.PENDING, ["An up-to-date persisted screening is required."],
+                             now, None, result.policy_version)
+        return Screening(result.status, result.reasons, now, min(deadline, result.safe_until),
+                         result.policy_version)
     return result
 
 

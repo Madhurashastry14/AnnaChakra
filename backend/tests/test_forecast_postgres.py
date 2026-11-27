@@ -85,6 +85,17 @@ def test_migrated_postgres_forecast_and_retraining_extraction(monkeypatch):
                 })
                 assert latest.status_code == 201, latest.text
                 assert latest.json()["items"][0]["prediction_method"] == "LOCAL_HISTORY"
+                meal_item_id = response.json()["items"][0]["id"]
+                waste = client.post("/api/v1/waste-logs", json={
+                    "food_item_id": food_id, "meal_record_item_id": meal_item_id,
+                    "confirmed_servings": 15, "waste_type": "UNSERVED_SURPLUS",
+                })
+                assert waste.status_code == 201, waste.text
+                assert waste.json()["safety_status"] == "PENDING"
+                assert client.post("/api/v1/waste-logs", json={
+                    "food_item_id": food_id, "meal_record_item_id": meal_item_id,
+                    "confirmed_servings": 11, "waste_type": "UNSERVED_SURPLUS",
+                }).status_code == 409
 
             with factory() as session:
                 records = extract_records(session)

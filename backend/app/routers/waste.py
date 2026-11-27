@@ -74,16 +74,21 @@ def detail(waste_id: int, kitchen: Kitchen = Depends(get_current_kitchen), db: S
     return waste_response(db, owned_waste(db, kitchen.id, waste_id), kitchen)
 
 
+def _update_owned(db, kitchen, waste_id, request):
+    current = owned_waste(db, kitchen.id, waste_id, lock=True)
+    return patch_waste(db, kitchen, current, request)
+
+
 @router.patch("/{waste_id}", response_model=WasteResponse)
 def update(waste_id: int, request: WastePatch, kitchen: Kitchen = Depends(get_current_kitchen),
            db: Session = Depends(get_db)):
-    return write(db, lambda: patch_waste(db, kitchen, owned_waste(db, kitchen.id, waste_id, lock=True), request))
+    return write(db, _update_owned, kitchen, waste_id, request)
 
 
 @router.post("/{waste_id}/safety-check", response_model=SafetyResponse)
 def safety_check(waste_id: int, request: SafetyCheck, kitchen: Kitchen = Depends(get_current_kitchen),
                  db: Session = Depends(get_db)):
-    result = write(db, lambda: patch_waste(db, kitchen, owned_waste(db, kitchen.id, waste_id, lock=True), request))
+    result = write(db, _update_owned, kitchen, waste_id, request)
     return SafetyResponse(waste_log_id=result.id, safety_status=result.safety_status,
                           reasons=result.safety_notes, safe_until=result.safe_until,
                           screened_at=result.screened_at, safety_policy_version=result.safety_policy_version)
