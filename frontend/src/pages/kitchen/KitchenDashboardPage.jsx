@@ -12,7 +12,6 @@ import {
   Plus,
   ScanLine,
   ShieldCheck,
-  Sparkles,
   Trash2,
   TrendingUp,
   Users,
@@ -226,8 +225,7 @@ export default function KitchenDashboardPage() {
   }
 
   const quickActions = [
-    { to: "/kitchen/menu-planner", label: "Plan a menu", icon: Sparkles },
-    { to: "/kitchen/forecast", label: "Generate a forecast", icon: TrendingUp },
+    { to: "/kitchen/forecast", label: "Plan a meal", icon: TrendingUp },
     { to: "/kitchen/meal-records/new", label: "Record meal feedback", icon: ClipboardList },
     { to: "/kitchen/scanner", label: "Scan food", icon: ScanLine },
     { to: "/kitchen/waste-logs/new", label: "Log waste", icon: Trash2 },
@@ -240,8 +238,8 @@ export default function KitchenDashboardPage() {
         title={`Welcome, ${kitchen.name}`}
         description="A live view of forecasts, meal service and waste performance. Every figure comes from your kitchen’s records."
         actions={
-          <Button to="/kitchen/menu-planner" icon={Sparkles}>
-            Plan a menu
+          <Button to="/kitchen/forecast" icon={TrendingUp}>
+            Plan a meal
           </Button>
         }
       />

@@ -19,7 +19,6 @@ import KitchenLayout from './components/kitchen/KitchenLayout.jsx'
 import KitchenSetupPage from './pages/kitchen/KitchenSetupPage.jsx'
 import KitchenSettingsPage from './pages/kitchen/KitchenSettingsPage.jsx'
 import KitchenDashboardPage from './pages/kitchen/KitchenDashboardPage.jsx'
-import MenuPlannerPage from './pages/kitchen/MenuPlannerPage.jsx'
 import ForecastPage from './pages/kitchen/ForecastPage.jsx'
 import ForecastHistoryPage from './pages/kitchen/ForecastHistoryPage.jsx'
 import ForecastDetailPage from './pages/kitchen/ForecastDetailPage.jsx'
@@ -432,7 +431,7 @@ function App() {
       >
         <Route index element={<Navigate to="/kitchen/dashboard" replace />} />
         <Route path="dashboard" element={<KitchenDashboardPage />} />
-        <Route path="menu-planner" element={<MenuPlannerPage />} />
+        <Route path="menu-planner" element={<Navigate to="/kitchen/forecast" replace />} />
         <Route path="forecast" element={<ForecastPage />} />
         <Route path="forecasts" element={<ForecastHistoryPage />} />
         <Route path="forecasts/:id" element={<ForecastDetailPage />} />

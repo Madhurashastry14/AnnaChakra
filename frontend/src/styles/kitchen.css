@@ -3747,3 +3747,48 @@
     grid-column: auto;
   }
 }
+
+/* Meal planning and preparation quantities */
+.k-meal-planning-card {
+  max-width: 840px;
+}
+
+.k-preparation-result {
+  margin-top: 20px;
+}
+
+.k-preparation-result .k-card-body {
+  padding-block: 0;
+}
+
+.k-preparation-list {
+  margin: 0;
+}
+
+.k-preparation-list > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 20px;
+  padding: 14px 0;
+}
+
+.k-preparation-list > div + div {
+  border-top: 1px solid var(--k-line);
+}
+
+.k-preparation-list dt {
+  flex: 1 1 12rem;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.k-preparation-list dd {
+  margin: 0;
+  color: var(--k-green-dark);
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}

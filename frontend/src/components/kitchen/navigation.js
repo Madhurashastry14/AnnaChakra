@@ -2,12 +2,10 @@ import {
   BarChart3,
   ClipboardList,
   HandHeart,
-  History,
   LayoutDashboard,
   Scale,
   ScanLine,
   Settings,
-  Sparkles,
   Trash2,
   TrendingUp,
   Truck,
@@ -18,9 +16,7 @@ export const KITCHEN_NAV_GROUPS = [
     label: "Workspace",
     items: [
       { to: "/kitchen/dashboard", label: "Overview", icon: LayoutDashboard },
-      { to: "/kitchen/menu-planner", label: "Smart Menu Planner", icon: Sparkles },
-      { to: "/kitchen/forecast", label: "Demand Forecast", icon: TrendingUp },
-      { to: "/kitchen/forecasts", label: "Forecast History", icon: History },
+      { to: "/kitchen/forecast", label: "Plan a Meal", icon: TrendingUp },
     ],
   },
   {
@@ -53,8 +49,7 @@ export const KITCHEN_NAV_GROUPS = [
 
 const PAGE_RULES = [
   { test: (path) => path === "/kitchen/dashboard", section: "Workspace", title: "Overview" },
-  { test: (path) => path === "/kitchen/menu-planner", section: "Workspace", title: "Smart Menu Planner" },
-  { test: (path) => path === "/kitchen/forecast", section: "Workspace", title: "Demand Forecast" },
+  { test: (path) => path === "/kitchen/forecast", section: "Workspace", title: "Plan a Meal" },
   { test: (path) => path === "/kitchen/forecasts", section: "Workspace", title: "Forecast History" },
   { test: (path) => /^\/kitchen\/forecasts\/\d+$/.test(path), section: "Workspace", title: "Forecast Detail" },
   { test: (path) => path === "/kitchen/meal-records", section: "Operations", title: "Meal Records" },
@@ -77,6 +72,7 @@ export function getPageMeta(pathname) {
 }
 
 export function isNavActive(pathname, to) {
+  if (to === "/kitchen/forecast" && /^\/kitchen\/forecasts(?:\/|$)/.test(pathname)) return true;
   if (to === "/kitchen/dashboard") return pathname === to;
   return pathname === to || pathname.startsWith(`${to}/`);
 }
