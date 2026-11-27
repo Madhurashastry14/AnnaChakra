@@ -13,6 +13,7 @@ from app.routers.kitchens import router as kitchens_router
 from app.routers.meal_records import router as meal_records_router
 from app.routers.ngos import router as ngos_router
 from app.routers.vision import router as vision_router
+from app.routers.waste import router as waste_router
 
 app = FastAPI(
     title="AnnaChakra API",
@@ -37,6 +38,7 @@ app.include_router(forecasts_router)
 app.include_router(meal_records_router)
 app.include_router(admin_router)
 app.include_router(vision_router)
+app.include_router(waste_router)
 
 
 @app.get("/health", tags=["Health"])

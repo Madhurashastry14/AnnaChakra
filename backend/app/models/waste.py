@@ -1,4 +1,4 @@
-from datetime import datetime
+﻿from datetime import datetime
 
 from sqlalchemy import (
     String, Text, Float, Boolean, ForeignKey,
@@ -45,6 +45,10 @@ class WasteLog(Base):
         ForeignKey("food_items.id")
     )
 
+    prediction_id: Mapped[str | None] = mapped_column(ForeignKey("vision_predictions.id"), index=True)
+    model_version: Mapped[str | None] = mapped_column(String(100))
+    notes: Mapped[str | None] = mapped_column(Text)
+
     image_url: Mapped[str | None] = mapped_column(
         String(500),
         nullable=True
@@ -71,7 +75,7 @@ class WasteLog(Base):
         Enum(WasteType, name="waste_type")
     )
 
-    prepared_at: Mapped[datetime] = mapped_column(
+    prepared_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True)
     )
 
