@@ -1,16 +1,14 @@
-﻿from datetime import date, timedelta
-
-from fastapi import HTTPException
+﻿from fastapi import HTTPException
 from sqlalchemy import select
 
 from app.models.food import FoodItem
 from app.models.forecast import Forecast, ForecastItem
-from app.models.meal_record import MealRecord, MealRecordItem
 from app.models.ml_model import ModelVersion
 from app.schemas.forecast import ForecastDishResponse, ForecastResponse
-from app.services.forecasting import forecast_dish
+from app.services.forecasting import catalogue_dish, forecast_menu_details, snapshot_menu
+from app.services.menu_history import menu_history
 from app.services.ingredients import calculate_ingredients
-from ml.forecasting.history import HISTORY_WINDOW_DAYS, Observation
+from ml.forecasting.menu_predict import MODEL_NAME
 
 
 def owned_forecast(db, kitchen_id, forecast_id):
@@ -29,30 +27,11 @@ def menu_items(db, ids):
     return foods
 
 
-def _history(db, kitchen_id, request):
-    start = request.meal_date - timedelta(days=min(HISTORY_WINDOW_DAYS, request.meal_date.toordinal() - 1))
-    statement = (
-        select(MealRecord, MealRecordItem)
-        .join(MealRecordItem, MealRecordItem.meal_record_id == MealRecord.id)
-        .where(MealRecord.kitchen_id == kitchen_id, MealRecord.meal_type == request.meal_type,
-               MealRecord.meal_date >= start, MealRecord.meal_date < request.meal_date,
-               MealRecord.meal_date <= date.today(),
-               MealRecord.actual_people > 0, MealRecordItem.shortage_occurred.is_(False),
-               MealRecordItem.food_item_id.in_(request.food_item_ids))
-        .order_by(MealRecord.meal_date, MealRecord.id)
-    )
-    return [
-        Observation(str(kitchen_id), str(item.food_item_id), meal.meal_type.value, meal.meal_date,
-                    meal.actual_people, item.prepared_servings, item.leftover_servings,
-                    item.shortage_occurred, item.plate_waste_servings)
-        for meal, item in db.execute(statement)
-    ]
-
-
 def _response(forecast, items):
     return ForecastResponse(
         id=forecast.id, meal_date=forecast.meal_date, meal_type=forecast.meal_type,
         expected_people=forecast.expected_people, model_version=forecast.model_version,
+        menu_mode=forecast.menu_mode,
         items=items, created_at=forecast.created_at,
     )
 
@@ -80,29 +59,25 @@ def get_forecast_response(db, forecast):
 
 def create_forecast(db, kitchen_id, request):
     foods = menu_items(db, request.food_item_ids)
-    observations = _history(db, kitchen_id, request)
+    dishes = [catalogue_dish(foods[key]) for key in request.food_item_ids]
+    history = menu_history(db, kitchen_id, request.meal_date)
     active = db.scalar(select(ModelVersion).where(
-        ModelVersion.model_name == "institutional_demand", ModelVersion.is_active.is_(True),
+        ModelVersion.model_name == MODEL_NAME, ModelVersion.is_active.is_(True),
     ))
-    items = []
-    for food_id in request.food_item_ids:
-        food = foods[food_id]
-        try:
-            prediction = forecast_dish(
-                food, kitchen_id, request.meal_date, request.meal_type, request.expected_people,
-                observations, active_model=active,
+    try:
+        items = [
+            ForecastDishResponse.model_validate(details)
+            for details in forecast_menu_details(
+                foods, dishes, kitchen_id, request.meal_date, request.meal_type.value,
+                request.expected_people, request.menu_mode.value, history, active_model=active,
             )
-            if prediction.recommended_servings > 2147483647:
-                raise ValueError("Recommended quantity exceeds storage limit")
-        except (ValueError, OverflowError) as exc:
-            raise HTTPException(422, "Unable to calculate quantities for the requested menu") from exc
-        items.append(ForecastDishResponse(
-            food_item_id=food_id, name=food.name, serving_unit=food.serving_unit,
-            expected_people=request.expected_people, **vars(prediction),
-        ))
+        ]
+    except (ValueError, OverflowError) as exc:
+        raise HTTPException(422, "Unable to calculate quantities for the requested menu") from exc
     forecast = Forecast(
         kitchen_id=kitchen_id, meal_date=request.meal_date, meal_type=request.meal_type,
-        expected_people=request.expected_people,
+        expected_people=request.expected_people, menu_mode=request.menu_mode,
+        menu_context=snapshot_menu(dishes),
         model_version=next((item.model_version for item in items if item.model_version), None),
     )
     db.add(forecast)

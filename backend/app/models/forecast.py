@@ -1,4 +1,4 @@
-﻿from datetime import date, datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     Date, DateTime, Integer, Float, String, JSON,
@@ -8,7 +8,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
-from app.models.enums import MealType, PredictionMethod
+from app.models.enums import MealType, MenuMode, PredictionMethod
 
 
 class Forecast(Base):
@@ -35,6 +35,9 @@ class Forecast(Base):
     )
 
     expected_people: Mapped[int] = mapped_column(Integer)
+
+    menu_mode: Mapped[MenuMode | None] = mapped_column(Enum(MenuMode, name="menu_mode"))
+    menu_context: Mapped[list[dict] | None] = mapped_column(JSON)
 
     model_version: Mapped[str | None] = mapped_column(
         String(100),

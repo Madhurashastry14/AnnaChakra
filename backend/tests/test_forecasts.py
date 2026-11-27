@@ -92,3 +92,15 @@ def test_forecast_validation(api, changes, status):
     client, _, _ = api
     assert client.post("/api/v1/forecasts", json=MENU | changes).status_code == status
     assert client.get("/api/v1/forecasts").json() == []
+
+
+def test_menu_mode_is_additive_and_persisted(api):
+    client, _, _ = api
+    response = client.post("/api/v1/forecasts", json=MENU | {"menu_mode": "FIXED_MEAL"})
+    assert response.status_code == 201, response.text
+    forecast = response.json()
+    assert forecast["menu_mode"] == "FIXED_MEAL"
+    assert forecast["items"][0]["allocation_method"] == "FIXED_ATTENDANCE"
+    assert forecast["items"][0]["preference_share"] is None
+    assert client.get(f"/api/v1/forecasts/{forecast['id']}").json() == forecast
+    assert client.post("/api/v1/forecasts", json=MENU | {"menu_mode": "OTHER"}).status_code == 422

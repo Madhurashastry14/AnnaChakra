@@ -1,9 +1,9 @@
-﻿from datetime import date, datetime
+from datetime import date, datetime
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models.enums import MealType, PredictionMethod, ServingUnit
+from app.models.enums import FoodRole, MealType, MenuMode, PredictionMethod, ServingUnit
 from app.schemas.food import CalculatedIngredient
 
 PositiveID = Annotated[int, Field(strict=True, gt=0, le=2147483647)]
@@ -15,6 +15,7 @@ class ForecastRequest(BaseModel):
     meal_date: date
     meal_type: MealType
     expected_people: PositiveID
+    menu_mode: MenuMode = MenuMode.CHOICE_BASED
     food_item_ids: list[PositiveID] = Field(min_length=1)
 
     @field_validator("food_item_ids")
@@ -37,6 +38,11 @@ class ForecastDishResponse(BaseModel):
     model_version: str | None = None
     ingredients: list[CalculatedIngredient]
     warnings: list[str]
+    food_role: FoodRole | None = None
+    estimated_diners: int | float | None = None
+    preference_share: float | None = None
+    compatible_main_food_item_ids: list[int] | None = None
+    allocation_method: str | None = None
 
 
 class ForecastResponse(BaseModel):
@@ -45,5 +51,6 @@ class ForecastResponse(BaseModel):
     meal_type: MealType
     expected_people: int
     model_version: str | None
+    menu_mode: MenuMode | None = None
     items: list[ForecastDishResponse]
     created_at: datetime

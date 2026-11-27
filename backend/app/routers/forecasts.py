@@ -1,4 +1,5 @@
-﻿from datetime import date
+import logging
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -12,17 +13,27 @@ from app.models.organization import Kitchen
 from app.schemas.forecast import ForecastRequest, ForecastResponse
 from app.services.forecast_records import create_forecast, get_forecast_response, owned_forecast
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/forecasts", tags=["Forecasts"])
 
 
 @router.post("", status_code=201, response_model=ForecastResponse)
-def create(request: ForecastRequest, kitchen: Kitchen = Depends(get_current_kitchen),
-           db: Session = Depends(get_db)):
+def create(
+    request: ForecastRequest,
+    kitchen: Kitchen = Depends(get_current_kitchen),
+    db: Session = Depends(get_db)
+):
+    kitchen_id = kitchen.id
     try:
-        return create_forecast(db, kitchen.id, request)
+        return create_forecast(db, kitchen_id, request)
+
     except SQLAlchemyError as exc:
         db.rollback()
-        raise HTTPException(500, "Unable to save forecast") from exc
+        logger.exception("Failed to save forecast for kitchen %s", kitchen_id)
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to save forecast"
+        ) from exc
 
 
 @router.get("", response_model=list[ForecastResponse])
