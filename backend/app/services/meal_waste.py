@@ -28,7 +28,7 @@ def meal_waste_summary(db, meal):
         unserved = totals[WasteType.UNSERVED_SURPLUS]
         spoiled = totals[WasteType.SPOILED_FOOD]
         plate = totals[WasteType.PLATE_WASTE]
-        items.append({
+        values = {
             "meal_record_item_id": item.id, "food_item_id": food.id, "food_item_name": food.name,
             "serving_unit": food.serving_unit, "prepared_servings": item.prepared_servings,
             "served_servings": item.served_servings, "recorded_unserved": item.leftover_servings,
@@ -39,7 +39,15 @@ def meal_waste_summary(db, meal):
                                       max(0, round(item.plate_waste_servings - plate, 9))),
             "waste_log_ids": [log.id for log in linked],
             "recorded_preparation_times": sorted({log.prepared_at for log in linked if log.prepared_at}),
-        })
+        }
+        values["logging_drafts"] = [
+            {"meal_record_item_id": item.id, "food_item_id": food.id, "confirmed_servings": remaining,
+             "waste_type": kind}
+            for kind, remaining in ((WasteType.UNSERVED_SURPLUS, values["remaining_unserved"]),
+                                    (WasteType.PLATE_WASTE, values["remaining_plate_waste"]))
+            if remaining is not None and remaining > 0
+        ]
+        items.append(values)
     return {"meal_record_id": meal.id, "meal_date": meal.meal_date, "items": items}
 
 

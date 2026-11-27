@@ -181,3 +181,53 @@ Trends response `{"items":[{"date":"2026-11-27","unit":"serving","prepared":500,
 ## Frontend coordination
 
 Kitchen developer: kitchen registration, catalogue, forecasts, meal records, waste/vision/safety, matching, donations, delivery. NGO/admin developer: auth, common layout, NGO registration/requirements, donation acceptance/confirmation, admin verification, analytics. Both use shared Axios client, token handling, status constants and reusable components. Use mock objects above until endpoints are available. Do not expose admin registration. Handle loading, empty, validation, 401/403/409 and unavailable model states. Coordinate changes to shared App/router/layout files. Contract changes must be communicated before merging.
+
+## Waste intelligence and smart menu planning
+
+All endpoints below use the `/api/v1` prefix and the kitchen staff bearer token. They operate on the associated kitchen. Existing forecast and waste endpoints retain their prior request fields.
+
+### Image counting
+
+`POST /vision/predict` still accepts multipart field `image`. An example response showing an estimate:
+
+```json
+{"prediction_id":"aabbccddeeff00112233445566778899","image_id":"aabbccddeeff00112233445566778899","predicted_food":"Chapati","food_item_id":12,"confidence":0.94,"confidence_score":0.94,"serving_unit":"piece","model_version":"example","top_predictions":[{"label":"chapati","food":"Chapati","food_item_id":12,"confidence":0.94,"serving_unit":"piece"}],"estimated_servings":1,"quantity_method":"EXPERIMENTAL","count_food_item_id":12,"counting_method":"OPENCV_CONTOUR","counting_status":"ESTIMATED","boxes":[[0.25,0.2,0.35,0.4]],"counting_warnings":["Experimental estimate of visible pieces only. Confirm the quantity."],"requires_confirmation":true,"requires_food_confirmation":true,"requires_quantity_confirmation":true,"warnings":["Experimental estimate of visible pieces only. Confirm the quantity."]}
+```
+
+`POST /vision/predictions/{prediction_id}/count` accepts JSON `{"food_item_id":12}` to count for a staff-selected food without changing the original classification. Success returns the estimate, method, status, normalized `boxes` as `[x,y,width,height]`, `count_food_item_id`, `counting_warnings`, and `requires_quantity_confirmation`. Count statuses are `ESTIMATED`, `UNSUPPORTED_FOOD`, `UNSUITABLE_IMAGE`, `DETECTION_FAILED`, and `NOT_ATTEMPTED`. A non-estimated response has null quantity. The operation returns 404 for inaccessible references and 415 for unreadable saved images. Invalidate the suggestion if staff selects a different food. Confirm food and quantity before posting a waste log. Duplicate upload references or exact decoded images already used for that kitchen can return 409 on waste creation.
+
+### Meal waste accounting
+
+`GET /meal-records/{record_id}/waste-summary` returns `meal_record_id`, `meal_date`, and `items`. For example:
+
+```json
+{"meal_record_id":10,"meal_date":"2026-11-26","items":[{"meal_record_item_id":31,"food_item_id":12,"food_item_name":"Chapati","serving_unit":"piece","prepared_servings":24,"served_servings":16,"recorded_unserved":8,"recorded_plate_waste":null,"logged_unserved":2,"logged_spoiled":0,"logged_plate_waste":0,"remaining_unserved":6,"remaining_plate_waste":null,"waste_log_ids":[19],"recorded_preparation_times":[],"logging_drafts":[{"meal_record_item_id":31,"food_item_id":12,"confirmed_servings":6,"waste_type":"UNSERVED_SURPLUS"}]}]}
+```
+
+`GET /meal-records/{record_id}/surplus-drafts` returns the same meal header and `drafts`. Each draft has the meal and food IDs, food name and unit, recorded and remaining unserved quantities, a `required_safety_information` array, warnings, `requires_quantity_confirmation`, and a nested `draft` object for `POST /waste-logs`. For example, its nested request can be `{"meal_record_item_id":31,"food_item_id":12,"confirmed_servings":6,"waste_type":"UNSERVED_SURPLUS","prepared_at":null}`. Both read endpoints return 404 for another kitchen's meal. Saving a draft never bypasses the existing safety screen or updates meal feedback.
+
+### Kitchen analytics
+
+`GET /analytics/waste-summary` and `GET /analytics/food-acceptance` return arrays of quantity-weighted metrics. `GET /analytics/waste-trends` adds a `date` field to each daily row. Shared optional filters are `start_date`, `end_date`, `meal_type`, `food_item_id`, and `menu_mode`. Example row:
+
+```json
+{"food_item_id":12,"food_item_name":"Chapati","serving_unit":"piece","meal_type":"LUNCH","menu_mode":"CHOICE_BASED","records_analyzed":1,"measured_plate_waste_records":1,"shortage_eligible_records":1,"shortage_records":0,"total_prepared":24,"total_served":16,"total_unserved":8,"total_plate_waste":2,"total_consumed":14,"measured_prepared":24,"measured_served":16,"overproduction_rate":33.3333,"plate_waste_rate":12.5,"food_acceptance_rate":87.5,"consumption_efficiency":58.3333,"plate_waste_measurement_coverage":100,"shortage_frequency":0}
+```
+
+`GET /analytics/waste-insights` returns `{"insights":[...]}` with food and meal context, insight type, severity, sample size, observed rate, threshold, title, description, recommendation, evidence quality and supporting metrics. `GET /analytics/portion-recommendations` returns `{"forecast_id":null,"recommendations":[...]}`. Each row has food, serving unit, catalogue default, metrics, uncensored served-per-attendee statistics, portion and preparation actions, sample size and warnings. Optional `forecast_id` restricts evidence to comparable prior menus and includes the forecast preparation quantity and expected attendance. Unknown quantities and zero-denominator rates are null. Show measurement coverage alongside the plate and consumption metrics.
+
+### Menu proposal
+
+`POST /menu/recommend` request:
+
+```json
+{"meal_date":"2026-11-28","meal_type":"LUNCH","expected_people":200,"menu_mode":"CHOICE_BASED","vegetarian_only":true,"max_main_dishes":1,"max_accompaniments":1,"max_dishes":2,"required_food_item_ids":[7],"excluded_food_item_ids":[]}
+```
+
+Example response:
+
+```json
+{"meal_date":"2026-11-28","meal_type":"LUNCH","expected_people":200,"menu_mode":"CHOICE_BASED","recommendation_method":"CATALOGUE_BASED","recommended_food_item_ids":[7,15],"recommended_items":[{"food_item_id":7,"food_item_name":"Steamed Rice","food_role":"MAIN_DISH","serving_unit":"serving","recommendation_score":55,"recommendation_method":"CATALOGUE_BASED","data_availability":"NO_HISTORY","records_analyzed":0,"waste_metrics":null,"reasons":["Catalogue preference weight and meal-type compatibility guide this suggestion."]},{"food_item_id":15,"food_item_name":"Sambar","food_role":"ACCOMPANIMENT","serving_unit":"serving","recommendation_score":55,"recommendation_method":"CATALOGUE_BASED","data_availability":"NO_HISTORY","records_analyzed":0,"waste_metrics":null,"reasons":["Catalogue preference weight and meal-type compatibility guide this suggestion."]}],"warnings":["Comparable kitchen history is limited. Review the proposed menu before forecasting."],"forecast_request":{"meal_date":"2026-11-28","meal_type":"LUNCH","expected_people":200,"menu_mode":"CHOICE_BASED","food_item_ids":[7,15]}}
+```
+
+IDs and quantities above are illustrative. Missing required or excluded catalogue IDs return 404. Conflicting constraints or no valid complete meal return 422. Catalogue admin requests can set `supported_meal_types` to a unique list of `BREAKFAST`, `LUNCH`, and `DINNER`. Keep the proposal editable and submit the reviewed `forecast_request` to `POST /forecasts` only after staff confirms the final menu. [Operator and workflow guide](WASTE_INTELLIGENCE.md).

@@ -7,7 +7,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_kitchen
 from app.models.enums import MealType, MenuMode
 from app.models.organization import Kitchen
-from app.schemas.analytics import WasteMetrics, WasteTrend
+from app.schemas.analytics import PortionRecommendations, WasteInsights, WasteMetrics, WasteTrend
 from app.services.waste_insights import waste_insights
 from app.services.forecast_records import owned_forecast
 from app.services.portion_recommendations import portion_recommendations
@@ -39,13 +39,13 @@ def trends(query: dict = Depends(filters), kitchen: Kitchen = Depends(get_curren
     return [WasteTrend(date=key[0], **metrics(group).model_dump()) for key, group in groups.items()]
 
 
-@router.get("/waste-insights")
+@router.get("/waste-insights", response_model=WasteInsights)
 def insights(query: dict = Depends(filters), kitchen: Kitchen = Depends(get_current_kitchen),
              db: Session = Depends(get_db)):
     return {"insights": waste_insights(history_rows(db, kitchen.id, **query))}
 
 
-@router.get("/portion-recommendations")
+@router.get("/portion-recommendations", response_model=PortionRecommendations)
 def portions(forecast_id: int | None = Query(default=None, gt=0), query: dict = Depends(filters),
              kitchen: Kitchen = Depends(get_current_kitchen), db: Session = Depends(get_db)):
     forecast = owned_forecast(db, kitchen.id, forecast_id) if forecast_id else None

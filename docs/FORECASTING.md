@@ -43,3 +43,7 @@ Promotion requires zero ML choice-allocation violations and more than 2% lower W
 ## Backend verification
 
 See the additive fields in the [API contract](API_CONTRACT.md). Use the existing ML and backend test suites from the repository root with `backend` on `PYTHONPATH` and local test database settings. The opt-in PostgreSQL smoke test applies the migration chain and exercises forecast and feedback endpoints in a rollback-only schema. Run `python -m pytest tests/test_forecast_postgres.py` from `backend` with `FORECAST_TEST_POSTGRES=1` and a PostgreSQL role allowed to create schemas.
+
+## Planning before forecasting
+
+The smart menu endpoint proposes an editable set of catalogue foods using kitchen feedback and compatibility rules. The selected menu still uses the existing forecasting endpoint for cooking quantities. Synthetic training reports describe the simulation rather than measured institutional forecasting accuracy. [Menu planning guide](WASTE_INTELLIGENCE.md).

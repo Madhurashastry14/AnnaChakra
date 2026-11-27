@@ -1,4 +1,6 @@
-﻿from math import fsum
+from math import fsum
+
+from app.models.food import FoodItem
 
 from app.services.forecast_records import get_forecast_response
 from app.services.waste_analytics import group_history, history_rows, metrics
@@ -44,10 +46,9 @@ def portion_recommendations(db, kitchen_id, query, forecast=None):
             "warnings": ["No automatic changes to catalogue portions or preparation quantities."],
         })
     for food_id, item in forecast_items.items():
-        if (query["food_item_id"] not in (None, food_id)
+        if (query.get("food_item_id") not in (None, food_id)
                 or any(row["food_item_id"] == food_id for row in result)):
             continue
-        from app.models.food import FoodItem
         food = db.get(FoodItem, food_id)
         result.append({
             "food_item_id": food_id, "food_item_name": item.name, "serving_unit": item.serving_unit,
