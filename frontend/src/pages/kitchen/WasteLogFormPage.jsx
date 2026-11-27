@@ -166,15 +166,15 @@ export default function WasteLogFormPage() {
     setSubmitting(true);
     try {
       const payload = buildWastePayload(form, { includeCleared: editing, simulated });
-      if (editing) {
-        const updated = await updateWasteLog(id, payload);
-        notify("Waste log updated.");
-        navigate(`/kitchen/waste-logs/${updated.id}`);
-        return;
+      const saved = editing ? await updateWasteLog(id, payload) : await createWasteLog(payload);
+      notify(editing ? "Waste log updated." : "Waste log recorded.");
+      if (saved.is_simulated && saved.available_servings > 0) {
+        navigate(`/kitchen/matching?waste_log_id=${saved.id}`);
+      } else if (editing) {
+        navigate(`/kitchen/waste-logs/${saved.id}`);
+      } else {
+        setResult(saved);
       }
-      const created = await createWasteLog(payload);
-      setResult(created);
-      notify("Waste log recorded.");
     } catch (error) {
       setSubmitError(getErrorMessage(error, editing ? "We couldn’t update the waste log." : "We couldn’t save the waste log."));
     } finally {
@@ -281,9 +281,6 @@ export default function WasteLogFormPage() {
           ) : null}
 
           <div className="k-result-actions">
-            {result.is_simulated && result.available_servings > 0 ? (
-              <Button to={`/kitchen/matching?waste_log_id=${result.id}`} iconRight={ArrowRight}>Find NGOs</Button>
-            ) : null}
             <Button to={`/kitchen/waste-logs/${result.id}`} icon={ArrowRight}>
               Open waste log
             </Button>
