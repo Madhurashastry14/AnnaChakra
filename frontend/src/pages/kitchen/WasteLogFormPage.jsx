@@ -19,7 +19,6 @@ import { getErrorMessage, isNotFound } from "../../utils/errors.js";
 import {
   WASTE_TYPES,
   formatQuantity,
-  labelFor,
   unitLabel,
   wasteTypeLabel,
 } from "../../utils/format.js";
@@ -32,7 +31,7 @@ import {
 import PageHeader from "../../components/ui/PageHeader.jsx";
 import Button from "../../components/ui/Button.jsx";
 import { Card, CardHeader } from "../../components/ui/Card.jsx";
-import { Badge } from "../../components/ui/Badge.jsx";
+import { RedistributionBadge } from "../../components/ui/Badge.jsx";
 import {
   CheckboxField,
   FormError,
@@ -248,12 +247,11 @@ export default function WasteLogFormPage() {
               </p>
             </div>
             <dl className="k-result-hero-stats">
-              {result.is_simulated ? <span className="k-demo-label">Demonstration data only. Not approved for actual consumption.</span> : (
+              {result.is_simulated ? <span className="k-demo-label">Demonstration data only. Not approved for actual consumption.</span> : null}
               <div>
                 <dt>Redistribution</dt>
-                <dd><Badge tone={result.safety_status === "ELIGIBLE" ? "success" : result.safety_status === "INELIGIBLE" ? "danger" : "warning"}>{labelFor(result.safety_status)}</Badge></dd>
+                <dd><RedistributionBadge status={result.safety_status} /></dd>
               </div>
-              )}
               <div>
                 <dt>Available for redistribution</dt>
                 <dd>{formatQuantity(result.available_servings, result.serving_unit)}</dd>

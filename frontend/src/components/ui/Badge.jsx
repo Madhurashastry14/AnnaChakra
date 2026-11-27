@@ -38,6 +38,11 @@ export function SafetyBadge({ status, className = "" }) {
   );
 }
 
+export function RedistributionBadge({ status }) {
+  const eligible = status === "ELIGIBLE";
+  return <Badge tone={eligible ? "success" : "danger"}>{eligible ? "Eligible" : "Ineligible"}</Badge>;
+}
+
 export function MethodBadge({ method, className = "" }) {
   const tone = method === "ML" ? "info" : method === "LOCAL_HISTORY" ? "success" : "neutral";
   const Icon = method === "ML" ? Sparkles : method === "LOCAL_HISTORY" ? FlaskConical : null;

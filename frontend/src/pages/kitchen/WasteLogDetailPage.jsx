@@ -16,7 +16,7 @@ import {
 import PageHeader from "../../components/ui/PageHeader.jsx";
 import Button from "../../components/ui/Button.jsx";
 import { Card, CardHeader } from "../../components/ui/Card.jsx";
-import { SafetyBadge } from "../../components/ui/Badge.jsx";
+import { RedistributionBadge } from "../../components/ui/Badge.jsx";
 import { EmptyState, ErrorState, LoadingSkeleton } from "../../components/ui/States.jsx";
 import AuthenticatedImage from "../../components/ui/AuthenticatedImage.jsx";
 
@@ -119,12 +119,11 @@ export default function WasteLogDetailPage() {
           </p>
         </div>
         <dl className="k-result-hero-stats">
-          {log.is_simulated ? <span className="k-demo-label">Demonstration data only. Not approved for actual consumption.</span> : (
+          {log.is_simulated ? <span className="k-demo-label">Demonstration data only. Not approved for actual consumption.</span> : null}
           <div>
             <dt>Redistribution</dt>
-            <dd><SafetyBadge status={log.safety_status} /></dd>
+            <dd><RedistributionBadge status={log.safety_status} /></dd>
           </div>
-          )}
           <div>
             <dt>Available for redistribution</dt>
             <dd>{formatQuantity(log.available_servings, log.serving_unit)}</dd>

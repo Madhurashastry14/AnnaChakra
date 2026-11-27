@@ -11,18 +11,15 @@ import { listWasteLogs } from "../../services/wasteLogs.js";
 import { listFoodItems } from "../../services/foodItems.js";
 import { getErrorMessage } from "../../utils/errors.js";
 import {
-  SAFETY_STATUSES,
   WASTE_TYPES,
   formatDateTime,
   formatQuantity,
-  labelFor,
   wasteTypeLabel,
 } from "../../utils/format.js";
 import PageHeader from "../../components/ui/PageHeader.jsx";
 import Button from "../../components/ui/Button.jsx";
 import { Card } from "../../components/ui/Card.jsx";
-import { useKitchen } from "../../components/kitchen/KitchenLayout.jsx";
-import { SafetyBadge } from "../../components/ui/Badge.jsx";
+import { RedistributionBadge } from "../../components/ui/Badge.jsx";
 import DataTable from "../../components/ui/DataTable.jsx";
 import Pagination from "../../components/ui/Pagination.jsx";
 import { EmptyState, ErrorState, LoadingSkeleton } from "../../components/ui/States.jsx";
@@ -55,10 +52,8 @@ export default function WasteLogsPage() {
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const [page, setPage] = useState(1);
-  const { kitchen } = useKitchen();
   const [filters, setFilters] = useState({
     waste_type: "",
-    safety_status: "",
     food_item_id: "",
     created_from: "",
     created_to: "",
@@ -85,7 +80,6 @@ export default function WasteLogsPage() {
 
     const params = { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE };
     if (filters.waste_type) params.waste_type = filters.waste_type;
-    if (filters.safety_status) params.safety_status = filters.safety_status;
     if (filters.food_item_id) params.food_item_id = Number(filters.food_item_id);
     if (filters.created_from) params.created_from = dayStart(filters.created_from);
     if (filters.created_to) params.created_to = dayEnd(filters.created_to);
@@ -130,7 +124,6 @@ export default function WasteLogsPage() {
   function resetFilters() {
     setFilters({
       waste_type: "",
-      safety_status: "",
       food_item_id: "",
       created_from: "",
       created_to: "",
@@ -163,13 +156,7 @@ export default function WasteLogsPage() {
               placeholder="All types"
               options={WASTE_TYPES.map((value) => ({ value, label: wasteTypeLabel(value) }))}
             />
-            {!kitchen?.is_simulated ? <SelectInput
-              label="Redistribution"
-              value={filters.safety_status}
-              onChange={(event) => setFilter("safety_status", event.target.value)}
-              placeholder="All statuses"
-              options={SAFETY_STATUSES.map((value) => ({ value, label: labelFor(value) }))}
-            /> : null}
+
             <FoodSelect
               foods={foods}
               value={filters.food_item_id}
@@ -253,7 +240,7 @@ export default function WasteLogsPage() {
                 {
                   key: "safety",
                   label: "Redistribution",
-                  render: (row) => row.is_simulated ? null : <SafetyBadge status={row.safety_status} />,
+                  render: (row) => <RedistributionBadge status={row.safety_status} />,
                 },
                 {
                   key: "available",
@@ -283,7 +270,7 @@ export default function WasteLogsPage() {
                   title={hasFilters ? "No waste logs match these filters" : "No waste logs yet"}
                   description={
                     hasFilters
-                      ? "Try a different waste type, redistribution status, food or date range."
+                      ? "Try a different waste type, food or date range."
                       : "Log surplus or plate waste after a meal service, or start from a scanner result."
                   }
                   action={
