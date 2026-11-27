@@ -96,7 +96,7 @@ def test_drafts_and_unknown_plate_waste(api):
     payload = {"food_item_id": 1, "meal_record_item_id": item_id, "confirmed_servings": 5,
                "waste_type": "UNSERVED_SURPLUS"}
     saved = client.post(WASTE, json=payload)
-    assert saved.status_code == 201 and saved.json()["available_servings"] == 0
+    assert saved.status_code == 201 and saved.json()["available_servings"] == 5
     assert client.post(WASTE, json=payload).status_code == 409
     plate = client.post(WASTE, json=payload | {"waste_type": "PLATE_WASTE", "confirmed_servings": 1})
     assert plate.json()["safety_status"] == "INELIGIBLE"

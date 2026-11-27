@@ -15,7 +15,7 @@ from app.models.waste import WasteLog
 from app.services.ngo_requirements import aware, local_date, now_utc, requirement_open
 from app.services.reservations import amount, capacity_left, food_reserved
 from app.services.safety import environment_allows
-from app.services.waste import screening_for_use
+from app.services.waste import redistribution_check
 
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -72,17 +72,15 @@ def read_surplus(db, kitchen, ids=None, *, now=None, lock=False, strict=False):
     if ids is not None:
         query = query.where(WasteLog.id.in_(ids))
     else:
-        query = query.where(WasteLog.waste_type == WasteType.UNSERVED_SURPLUS,
+        query = query.where(WasteLog.waste_type != WasteType.PLATE_WASTE,
                             WasteLog.confirmed_servings > 0)
-        if not kitchen.is_simulated:
-            query = query.where(WasteLog.safe_until > now)
     rows = db.execute(query.with_for_update(of=WasteLog) if lock else query).all()
     if ids is not None and len(rows) != len(ids):
         raise HTTPException(404, "Waste log not found")
     surplus = []
     for waste, food in rows:
-        screened = screening_for_use(waste, food, kitchen, now)
-        if (waste.waste_type != WasteType.UNSERVED_SURPLUS or screened.status != SafetyStatus.ELIGIBLE
+        screened = redistribution_check(waste, food, kitchen, now)
+        if (waste.waste_type == WasteType.PLATE_WASTE or screened.status != SafetyStatus.ELIGIBLE
                 or screened.safe_until is None or screened.safe_until <= now
                 or not isfinite(waste.confirmed_servings) or waste.confirmed_servings <= 0
                 or (food.serving_unit == "piece" and not float(waste.confirmed_servings).is_integer())):

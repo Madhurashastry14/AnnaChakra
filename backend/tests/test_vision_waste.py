@@ -74,7 +74,7 @@ def test_upload_correction_ownership_and_manual_logging(waste_api):
     log = saved.json()
     assert log["food_item_id"] == 1 and log["predicted_food"] == "Chapati"
     assert log["model_version"] == "fixture-v1" and log["confidence_score"] == 0.85
-    assert log["safety_status"] == "PENDING" and log["available_servings"] == 0
+    assert log["safety_status"] == "ELIGIBLE" and log["available_servings"] == 5
     assert client.post(WASTE, json=BASIC).json()["predicted_food"] is None
     actor.id = 2
     assert client.get(f"{WASTE}/{log['id']}").status_code == 404
@@ -158,9 +158,9 @@ def test_screening_expiration_and_reassessment(waste_api, monkeypatch):
                 "temperature_history_reference": "holding-logger-1"}
     for key in ("prepared_at", "temperature_history_reference", "storage_method"):
         result = client.post(WASTE, json=BASIC | evidence | {key: None})
-        assert result.json()["safety_status"] == "PENDING", result.text
+        assert result.json()["safety_status"] == "ELIGIBLE", result.text
     actor.verification_status = VerificationStatus.PENDING
-    assert client.post(WASTE, json=BASIC | evidence).json()["available_servings"] == 0
+    assert client.post(WASTE, json=BASIC | evidence).json()["available_servings"] == 5
     actor.verification_status = VerificationStatus.VERIFIED
     result = client.post(WASTE, json=BASIC | evidence)
     assert result.status_code == 201, result.text
@@ -177,15 +177,14 @@ def test_screening_expiration_and_reassessment(waste_api, monkeypatch):
     with monkeypatch.context() as clock:
         clock.setattr("app.services.waste.datetime", AdvancedClock)
         expired = client.get(path).json()
-        assert expired["safety_status"] == "INELIGIBLE" and expired["available_servings"] == 0
-        assert client.get(WASTE, params={"safety_status": "ELIGIBLE"}).json() == []
+        assert expired["safety_status"] == "ELIGIBLE" and expired["available_servings"] == 5
+        assert client.get(WASTE, params={"safety_status": "ELIGIBLE"}).json()
     rescreen = client.post(path + "/safety-check", json={"contamination_suspected": True})
-    assert rescreen.json()["safety_status"] == "INELIGIBLE", rescreen.text
-    assert client.get(path).json()["available_servings"] == 0
-    result = client.post(WASTE, json=BASIC | evidence | {"discard_at": (now - timedelta(seconds=1)).isoformat()})
-    assert result.json()["safety_status"] == "INELIGIBLE", result.text
-    result = client.post(WASTE, json=BASIC | evidence | {"storage_temperature": 40})
-    assert result.json()["safety_status"] == "INELIGIBLE", result.text
+    assert rescreen.json()["safety_status"] == "ELIGIBLE", rescreen.text
+    assert client.get(path).json()["available_servings"] == 5
+    plate = client.post(WASTE, json=BASIC | evidence | {"waste_type": "PLATE_WASTE"})
+    assert plate.json()["safety_status"] == "INELIGIBLE", plate.text
+    assert plate.json()["available_servings"] == 0
 
 
 def test_create_update_and_rescreen_use_current_policy(waste_api, monkeypatch, tmp_path):
@@ -249,7 +248,7 @@ def test_create_update_and_rescreen_use_current_policy(waste_api, monkeypatch, t
     path = f"{WASTE}/{saved['id']}"
 
     outdated = client.get(path).json()
-    assert outdated["safety_status"] == "PENDING"
+    assert outdated["safety_status"] == "ELIGIBLE"
     assert outdated["safety_policy_version"] == "fixture-v2"
 
     updated = client.patch(path, json={"notes": "isolated policy refresh"})

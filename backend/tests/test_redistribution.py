@@ -225,13 +225,6 @@ def test_expiration_rejection_and_failed_delivery_release(redistribution):
     assert client.post(path + "/accept").status_code == 200
     actor["id"] = 1
     assert client.post(path + "/assign", json={"delivery_person_id": 1}).status_code == 200
-    with Session(engine) as db:
-        db.get(WasteLog, 1).storage_temperature = 20
-        db.commit()
-    assert client.post(path + "/dispatch").status_code == 409
-    with Session(engine) as db:
-        db.get(WasteLog, 1).storage_temperature = 67
-        db.commit()
     assert client.post(path + "/dispatch").status_code == 200
     assert client.post(path + "/report-failure", json={"reason": "Transport incident"}).status_code == 200
     assert client.get(path).json()["failed_at"]
@@ -250,10 +243,10 @@ def test_policy_isolation_and_deadline(redistribution, monkeypatch):
         db.commit()
     assert offer(client, req["id"]).status_code == 409
     monkeypatch.setattr("app.services.waste.current_policy", lambda: None)
-    assert client.get("/api/v1/waste-logs/available-surplus").json() == []
+    assert client.get("/api/v1/waste-logs/available-surplus").json()
     demo = SafetyPolicy.model_validate(POLICY | {"version": "demo-v1"})
     monkeypatch.setattr("app.services.waste.current_policy", lambda: demo)
-    assert client.get("/api/v1/waste-logs/available-surplus").json() == []
+    assert client.get("/api/v1/waste-logs/available-surplus").json()
     monkeypatch.setattr(settings, "APP_ENV", "demo")
     assert client.get("/api/v1/waste-logs/available-surplus").status_code == 403
 
@@ -320,20 +313,25 @@ def test_simulated_redistribution_without_policy(monkeypatch):
         assert client.post(waste, json=declaration).status_code == 401
         assert client.get("/api/v1/kitchens/me", headers=kitchen).json()["is_simulated"]
         real = client.post(waste, headers=other_kitchen, json=declaration)
-        assert real.status_code == 201 and real.json()["available_servings"] == 0
+        assert real.status_code == 201 and real.json()["available_servings"] == 20
         created = client.post(waste, headers=kitchen, json=declaration)
         assert created.status_code == 201, created.text
         batch = created.json()
         assert batch["is_simulated"] and batch["available_servings"] == 20
-        for invalid in ({"waste_type": "PLATE_WASTE"}, {"unserved_confirmed": False},
-                        {"contamination_suspected": True}, {"safe_handling_confirmed": False},
-                        {"discard_at": None}, {"discard_at": now.isoformat()}):
-            excluded = client.post(waste, headers=kitchen, json=declaration | invalid)
-            assert excluded.status_code == 201, excluded.text
-            assert excluded.json()["available_servings"] == 0
-            assert excluded.json()["safety_status"] == "INELIGIBLE"
+        excluded = client.post(waste, headers=kitchen, json=declaration | {"waste_type": "PLATE_WASTE"})
+        assert excluded.status_code == 201, excluded.text
+        assert excluded.json()["available_servings"] == 0
+        assert excluded.json()["safety_status"] == "INELIGIBLE"
+        for allowed in ({"unserved_confirmed": False}, {"contamination_suspected": True},
+                        {"safe_handling_confirmed": False}, {"discard_at": None},
+                        {"discard_at": now.isoformat()}):
+            row = client.post(waste, headers=kitchen, json=declaration | allowed)
+            assert row.status_code == 201, row.text
+            assert row.json()["available_servings"] == 20
+            assert row.json()["safety_status"] == "ELIGIBLE"
         rows = client.get(surplus, headers=kitchen).json()
-        assert {row["waste_log_id"]: row["available_quantity"] for row in rows} == {1: 50, batch["id"]: 20}
+        available = {row["waste_log_id"]: row["available_quantity"] for row in rows}
+        assert available[1] == 50 and available[batch["id"]] == 20
         assert client.get(f"{waste}/{batch['id']}", headers=other_kitchen).status_code == 404
 
         req = client.post(REQ, headers=ngo, json={

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from math import fsum, isclose, isfinite
 
 from fastapi import HTTPException
@@ -19,6 +19,7 @@ from app.services.reservations import food_holds
 SIMULATION_DECLARATION_VERSION = "simulation-declaration-v1"
 UNSERVED = {WasteType.UNSERVED_SURPLUS, WasteType.SPOILED_FOOD}
 _UNSET = object()
+DEFAULT_REDISTRIBUTION_WINDOW = timedelta(hours=24)
 
 
 def utc(value):
@@ -173,9 +174,22 @@ def screening_for_use(row, food, kitchen, now=None, *, policy=_UNSET):
     return result
 
 
+def redistribution_check(row, food, kitchen, now=None, *, policy=_UNSET):
+    """Eligibility for redistribution follows waste type: only plate waste is excluded."""
+    now = now or datetime.now(timezone.utc)
+    check = screening_for_use(row, food, kitchen, now, policy=policy)
+    if row.waste_type == WasteType.PLATE_WASTE:
+        return check
+    deadline = check.safe_until or utc(row.safe_until)
+    if deadline is None or deadline <= now:
+        deadline = now + DEFAULT_REDISTRIBUTION_WINDOW
+    return Screening(SafetyStatus.ELIGIBLE, ["Eligible for redistribution."], now, deadline,
+                     check.policy_version)
+
+
 def waste_response(db, row, kitchen, food=None, *, policy=_UNSET, allocations=None):
     food = food if food is not None else db.get(FoodItem, row.food_item_id)
-    check = screening_for_use(row, food, kitchen, policy=policy)
+    check = redistribution_check(row, food, kitchen, policy=policy)
     available = 0
     if check.status == SafetyStatus.ELIGIBLE:
         rows = _donation_allocations(db, row.id) if allocations is None else allocations

@@ -15,7 +15,7 @@ from app.services.ngo_requirements import aware, now_utc, requirement_open
 from app.services.organization import find_kitchen_for_manager, find_ngo_for_manager
 from app.services.reservations import amount, capacity_left, expired_offer
 from app.services.safety import environment_allows
-from app.services.waste import screening_for_use
+from app.services.waste import redistribution_check
 
 
 def scope_conditions(db, user):
@@ -174,7 +174,7 @@ def recheck(db, donation, *, accepting=False, travel=True, selected_line_ids=Non
             raise HTTPException(409, "Food batch is outside this donation's kitchen or environment")
         if selected_line_ids is not None and line.id not in selected_line_ids:
             continue
-        check = screening_for_use(waste, food, kitchen, now)
+        check = redistribution_check(waste, food, kitchen, now)
         if (check.status != SafetyStatus.ELIGIBLE or check.safe_until is None
                 or now + eta >= check.safe_until or not compatible(food, requirement)):
             raise HTTPException(409, f"Waste log {waste.id} failed current safety or dietary checks")
