@@ -5,12 +5,14 @@ import { listFoodItems } from "../../services/foodItems.js";
 import { createForecast } from "../../services/forecasts.js";
 import { recommendMenu } from "../../services/menu.js";
 import { getErrorMessage } from "../../utils/errors.js";
-import { formatNumber, mealTypeLabel, todayISO, unitLabel, unitSingular } from "../../utils/format.js";
+import { mealTypeLabel, todayISO } from "../../utils/format.js";
 import PageHeader from "../../components/ui/PageHeader.jsx";
 import Button from "../../components/ui/Button.jsx";
-import { Card, CardBody, CardHeader } from "../../components/ui/Card.jsx";
+import { Card } from "../../components/ui/Card.jsx";
 import { FormError, FormGrid, SelectInput, TextInput } from "../../components/ui/Form.jsx";
 import { FoodMultiSelect } from "../../components/kitchen/FoodSelectors.jsx";
+import ForecastResult from "../../components/kitchen/ForecastResult.jsx";
+import { EmptyState } from "../../components/ui/States.jsx";
 
 function readPrefill() {
   try {
@@ -72,7 +74,9 @@ export default function ForecastPage() {
   }, []);
 
   useEffect(() => {
-    if (result) resultRef.current?.focus();
+    if (!result || !resultRef.current) return;
+    resultRef.current.scrollIntoView({ behavior: "instant", block: "start" });
+    resultRef.current.focus({ preventScroll: true });
   }, [result]);
 
   function setField(field, value) {
@@ -145,7 +149,13 @@ export default function ForecastPage() {
                 ]} />
             </FormGrid>
 
-            {foodsError ? <FormError message={foodsError} /> : (
+            {foodsError ? <FormError message={foodsError} /> : foods?.length === 0 ? (
+              <EmptyState
+                title="No dishes in the food catalogue"
+                description="Add food items to the catalogue before creating a preparation forecast."
+                className="k-empty-compact"
+              />
+            ) : (
               <FoodMultiSelect foods={foods} selectedIds={form.food_item_ids}
                 onChange={(ids) => setField("food_item_ids", ids)} label="Dishes" error={errors.food_item_ids}
                 disabled={Boolean(busy)} maxHeight={240} required />
@@ -167,22 +177,14 @@ export default function ForecastPage() {
       </Card>
 
       {result ? (
-        <Card className="k-meal-planning-card k-preparation-result" tabIndex={-1} ref={resultRef}
-          aria-label="How much to prepare">
-          <CardHeader title="How much to prepare" />
-          <CardBody>
-            <dl className="k-preparation-list">
-              {result.items.map((item) => (
-                <div key={item.food_item_id}>
-                  <dt>{item.name}</dt>
-                  <dd>{formatNumber(item.recommended_servings)}{" "}
-                    {item.recommended_servings === 1 ? unitSingular(item.serving_unit) : unitLabel(item.serving_unit)}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </CardBody>
-        </Card>
+        <section
+          className="k-forecast-results-anchor"
+          ref={resultRef}
+          tabIndex={-1}
+          aria-label="Forecast results"
+        >
+          <ForecastResult forecast={result} foods={foods ?? []} />
+        </section>
       ) : null}
     </>
   );
