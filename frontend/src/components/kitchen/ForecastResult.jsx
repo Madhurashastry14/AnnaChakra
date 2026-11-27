@@ -377,12 +377,6 @@ export default function ForecastResult({
           </div>
         </div>
         <div className="k-card-body k-prediction-explanation">
-          <div className="k-model-version">
-            <span>Forecast model version</span>
-            <strong className="k-mono">
-              {forecast.model_version ?? "Not returned"}
-            </strong>
-          </div>
           <div className="k-method-grid">
             {methods.map((method) => (
               <div className="k-method-note" key={method}>
@@ -402,7 +396,6 @@ export default function ForecastResult({
                   <th>Prediction method</th>
                   <th>Allocation method</th>
                   <th>Historical observations</th>
-                  <th>Model version</th>
                 </tr>
               </thead>
               <tbody>
@@ -417,9 +410,6 @@ export default function ForecastResult({
                     </td>
                     <td data-label="Historical observations">
                       {item.historical_observation_count ?? "Not available"}
-                    </td>
-                    <td data-label="Model version">
-                      {item.model_version ?? "—"}
                     </td>
                   </tr>
                 ))}

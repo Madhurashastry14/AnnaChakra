@@ -346,10 +346,11 @@ export default function KitchenDashboardPage() {
         />
         <MetricCard
           label="Unserved surplus"
+          className="k-metric-unserved"
           value={
             summary.length === 0 ? "—" : (
               <span className="k-metric-split">
-                {formatQuantity(unserved.serving, "serving")}
+                <span>{formatQuantity(unserved.serving, "serving")}</span>
                 <small>{formatQuantity(unserved.piece, "piece")}</small>
               </span>
             )
