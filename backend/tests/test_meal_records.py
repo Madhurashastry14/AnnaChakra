@@ -1,4 +1,4 @@
-﻿from datetime import date, timedelta
+from datetime import date, timedelta
 
 from test_forecasts import MENU, api
 
@@ -15,12 +15,14 @@ def test_feedback_updates_history_and_preserves_ownership(api):
     }
     route = "/api/v1/meal-records"
     assert client.post(route, json=payload | {"meal_type": "DINNER"}).status_code == 422
+    assert client.post(route, json=payload | {"menu_mode": "FIXED_MEAL"}).status_code == 422
     actor.id = 2
     assert client.post(route, json=payload).status_code == 404
     actor.id = 1
     result = client.post(route, json=payload)
     assert result.status_code == 201, result.text
     saved = result.json()
+    assert saved["menu_mode"] == "CHOICE_BASED"
     item = saved["items"][0]
     assert item["served_servings"] == 25
     assert item["consumed_servings"] == 23

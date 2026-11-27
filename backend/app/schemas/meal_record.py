@@ -1,9 +1,9 @@
-﻿from datetime import date, datetime
+from datetime import date, datetime
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.models.enums import MealType
+from app.models.enums import MealType, MenuMode
 from app.schemas.forecast import PositiveID
 
 Quantity = Annotated[float, Field(ge=0, allow_inf_nan=False)]
@@ -32,6 +32,7 @@ class MealRecordRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     forecast_id: PositiveID | None = None
+    menu_mode: MenuMode | None = None
     meal_date: date
     meal_type: MealType
     actual_people: Annotated[int, Field(strict=True, ge=0, le=2147483647)]
@@ -48,6 +49,7 @@ class MealRecordPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     forecast_id: PositiveID | None = None
+    menu_mode: MenuMode | None = None
     meal_date: date | None = None
     meal_type: MealType | None = None
     actual_people: Annotated[int, Field(strict=True, ge=0, le=2147483647)] | None = None

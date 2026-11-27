@@ -1,4 +1,4 @@
-﻿from contextlib import nullcontext
+from contextlib import nullcontext
 
 import pandas as pd
 
@@ -35,7 +35,10 @@ def test_candidate_requires_test_and_validation_gain_for_each_unit():
         "ML": {"records": 20, "wape": 0.09}, "BASELINE": {"wape": 0.18},
         "LOCAL_HISTORY": {"wape": 0.1},
     }}
-    metadata = {"supported_quantity_units": ["serving"], "metrics": {"validation": report, "test": report}}
+    report["serving"]["INDEPENDENT"] = {"wape": 0.18}
+    report["serving"]["EQUAL_ALLOCATION"] = {"wape": 0.12}
+    split = {"units": report, "allocation_violations": {"ML": 0}}
+    metadata = {"supported_quantity_units": ["serving"], "metrics": {"validation": split, "test": split}}
     assert retrain.eligible(metadata)
     metadata["supported_quantity_units"].append("piece")
     assert not retrain.eligible(metadata)

@@ -1,4 +1,4 @@
-﻿from datetime import date
+from datetime import date
 
 from fastapi import HTTPException
 from pydantic import ValidationError
@@ -10,6 +10,7 @@ from app.models.meal_record import MealRecord, MealRecordItem
 from app.models.waste import WasteLog
 from app.schemas.meal_record import MealDishResponse, MealRecordRequest, MealRecordResponse
 from app.services.forecast_records import menu_items, owned_forecast
+from app.services.forecasting import catalogue_dish, snapshot_menu
 
 
 def owned_meal(db, kitchen_id, record_id, *, lock=False):
@@ -30,11 +31,12 @@ def meal_response(db, record):
     return MealRecordResponse(
         id=record.id, created_at=record.created_at, forecast_id=record.forecast_id,
         meal_date=record.meal_date, meal_type=record.meal_type, actual_people=record.actual_people,
+        menu_mode=record.menu_mode,
         items=[MealDishResponse.model_validate(item) for item in _items(db, record)],
     )
 
 
-def _validate(db, kitchen_id, request):
+def _validated_menu(db, kitchen_id, request, record):
     if request.meal_date > date.today():
         raise HTTPException(422, "Meal records require a completed meal date")
     foods = menu_items(db, [item.food_item_id for item in request.items])
@@ -53,6 +55,20 @@ def _validate(db, kitchen_id, request):
             forecast.meal_date, forecast.meal_type, forecast_menu,
         ):
             raise HTTPException(422, "Meal date, type and menu must match the linked forecast")
+        if forecast.menu_mode is not None:
+            if request.menu_mode is not None and request.menu_mode != forecast.menu_mode:
+                raise HTTPException(422, "Meal mode must match the linked forecast")
+            if forecast.menu_context is not None:
+                return forecast.menu_mode, forecast.menu_context
+            mode = forecast.menu_mode
+        else:
+            mode = request.menu_mode
+    else:
+        mode = request.menu_mode
+    previous = {entry["key"]: entry for entry in (record.menu_context or [])} if record else {}
+    context = [previous.get(entry["key"], entry) for entry in
+               snapshot_menu(catalogue_dish(foods[item.food_item_id]) for item in request.items)]
+    return mode, context
 
 
 def _stored_values(request_item):
@@ -64,8 +80,8 @@ def _stored_values(request_item):
 
 
 def save_meal(db, kitchen_id, request, record=None):
-    _validate(db, kitchen_id, request)
-    values = request.model_dump(exclude={"items"})
+    mode, context = _validated_menu(db, kitchen_id, request, record)
+    values = request.model_dump(exclude={"items"}) | {"menu_mode": mode, "menu_context": context}
     old_items = {} if record is None else {item.food_item_id: item for item in _items(db, record)}
     incoming = {item.food_item_id: _stored_values(item) for item in request.items}
     if record is None:
@@ -108,8 +124,11 @@ def patch_meal(db, kitchen_id, record, patch):
     values = original.model_dump(exclude={"id", "created_at"})
     values["items"] = [item.model_dump(exclude={"id", "served_servings", "consumed_servings"})
                        for item in original.items]
+    edits = patch.model_dump(exclude_unset=True)
+    if edits.get("forecast_id") not in (None, record.forecast_id) and "menu_mode" not in edits:
+        values["menu_mode"] = None
     try:
-        request = MealRecordRequest.model_validate(values | patch.model_dump(exclude_unset=True))
+        request = MealRecordRequest.model_validate(values | edits)
     except ValidationError as exc:
         raise HTTPException(422, "Invalid meal record update") from exc
     return save_meal(db, kitchen_id, request, record)

@@ -1,14 +1,14 @@
 from datetime import date, datetime
 
 from sqlalchemy import (
-    Date, DateTime, Integer, Float, Boolean,
+    Date, DateTime, Integer, Float, Boolean, JSON,
     ForeignKey, Enum, func, CheckConstraint,
     UniqueConstraint
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
-from app.models.enums import MealType
+from app.models.enums import MealType, MenuMode
 
 
 class MealRecord(Base):
@@ -39,6 +39,9 @@ class MealRecord(Base):
     meal_type: Mapped[MealType] = mapped_column(
         Enum(MealType, name="meal_type")
     )
+
+    menu_mode: Mapped[MenuMode | None] = mapped_column(Enum(MenuMode, name="menu_mode"))
+    menu_context: Mapped[list[dict] | None] = mapped_column(JSON)
 
     actual_people: Mapped[int] = mapped_column(Integer)
 
