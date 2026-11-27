@@ -11,7 +11,7 @@ INSTITUTIONAL_KEYS = ["kitchen_key", "food_item_name", "meal_type"]
 def calendar_features(frame):
     frame = frame.copy()
     dates = pd.to_datetime(frame["meal_date"])
-    frame["day_of_week"] = dates.dt.dayofweek
+    frame["day_of_week"] = dates.dt.day_of_week
     frame["month"] = dates.dt.month
     frame["weekend"] = (frame["day_of_week"] >= 5).astype(int)
     return frame
@@ -21,8 +21,7 @@ def temporal_features(frame, keys, *, institutional=False, window_days=90):
     """Use date batches, with stable source order to break earlier-date ties."""
     result = calendar_features(frame).sort_values("meal_date", kind="stable").reset_index(drop=True)
     names = HISTORY + (["historical_rate"] if institutional else [])
-    for name in names:
-        result[name] = np.nan
+    output = np.full((len(result), len(names)), np.nan)
     for _, group in result.groupby(keys, sort=False):
         history = []
         for date, batch in group.groupby("meal_date", sort=False):
@@ -38,9 +37,10 @@ def temporal_features(frame, keys, *, institutional=False, window_days=90):
             ]
             if institutional:
                 values.append(sum(demand) / sum(row[2] for row in history) if history else np.nan)
-            result.loc[batch.index, names] = values
+            output[batch.index] = values
             for row in batch.itertuples():
                 history.append((date, row.observed_demand, row.actual_people if institutional else None))
+    result[names] = output
     return result
 
 
