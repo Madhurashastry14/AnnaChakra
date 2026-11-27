@@ -1,0 +1,207 @@
+.k-portal-metrics {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+}
+
+.k-portal-dashboard-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.k-portal-list {
+  display: grid;
+  gap: 14px;
+}
+
+.k-portal-list-item {
+  scroll-margin-top: 20px;
+  min-width: 0;
+  padding: 18px;
+  background: var(--k-paper);
+  border: 1px solid var(--k-line);
+  border-radius: var(--k-radius-sm);
+}
+
+#receipt {
+  scroll-margin-top: 20px;
+}
+
+.k-portal-list-item h3 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.k-portal-list-item h3 a {
+  text-decoration: none;
+}
+
+.k-portal-list-item h3 a:hover {
+  color: var(--k-green);
+  text-decoration: underline;
+}
+
+.k-portal-list-item p {
+  margin: 5px 0 0;
+  color: var(--k-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.k-portal-food-list {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.k-portal-food-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  background: var(--k-green-pale);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.k-portal-food-list small {
+  color: var(--k-muted);
+}
+
+.k-portal-notes {
+  padding: 10px 12px;
+  color: var(--k-ink-soft) !important;
+  background: var(--k-green-pale);
+  border-left: 3px solid var(--k-green-mid);
+  border-radius: 4px;
+}
+
+.k-portal-activity {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.k-portal-activity li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--k-line);
+}
+
+.k-portal-activity li:first-child {
+  padding-top: 0;
+}
+
+.k-portal-activity li:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.k-portal-activity li > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.k-portal-activity li a {
+  color: var(--k-ink);
+  text-decoration: none;
+}
+
+.k-portal-activity li a:hover {
+  color: var(--k-green);
+  text-decoration: underline;
+}
+
+.k-portal-activity small {
+  color: var(--k-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.k-portal-simple-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.k-portal-simple-list li {
+  padding: 11px 13px;
+  background: var(--k-green-pale);
+  border: 1px solid var(--k-line);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.k-admin-filter-search {
+  display: flex;
+  flex: 1 1 320px;
+  align-items: end;
+  gap: 10px;
+}
+
+.k-admin-filter-search .k-field {
+  flex: 1;
+}
+
+.k-admin-result-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  color: var(--k-muted);
+  font-size: 12px;
+}
+
+.k-analytics-filter-card {
+  display: grid;
+  grid-template-columns: minmax(200px, 300px) minmax(0, 1fr);
+  align-items: end;
+  gap: 16px;
+  padding: 16px;
+}
+
+.k-analytics-filter-card > p {
+  margin: 0 0 9px;
+}
+
+.k-redistribution-facts dd svg {
+  vertical-align: -2px;
+}
+
+@media (max-width: 760px) {
+  .k-portal-dashboard-grid,
+  .k-analytics-filter-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .k-portal-list-item {
+    padding: 14px;
+  }
+
+  .k-portal-food-list li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .k-portal-food-list small {
+    grid-column: 1 / -1;
+  }
+
+  .k-portal-activity li {
+    align-items: flex-start;
+  }
+
+  .k-admin-filter-search {
+    flex-basis: 100%;
+  }
+}

@@ -22,10 +22,10 @@ export async function listDonations(params = {}) {
   return data;
 }
 
-export async function listAllDonations() {
+export async function listAllDonations(filters = {}) {
   const donations = [];
   for (let offset = 0; ; offset += PAGE_SIZE) {
-    const page = await listDonations({ limit: PAGE_SIZE, offset });
+    const page = await listDonations({ ...filters, limit: PAGE_SIZE, offset });
     donations.push(...page);
     if (page.length < PAGE_SIZE) return donations;
   }
@@ -50,6 +50,11 @@ export async function listDeliveries(params = {}) {
   return data;
 }
 
+export async function getDelivery(deliveryId) {
+  const { data } = await api.get(`/api/v1/deliveries/${deliveryId}`);
+  return data;
+}
+
 export async function listAllDeliveries() {
   const deliveries = [];
   for (let offset = 0; ; offset += PAGE_SIZE) {
@@ -59,7 +64,7 @@ export async function listAllDeliveries() {
   }
 }
 
-export async function getRedistributionSummary() {
-  const { data } = await api.get("/api/v1/analytics/redistribution-summary");
+export async function getRedistributionSummary(filters = {}) {
+  const { data } = await api.get("/api/v1/analytics/redistribution-summary", { params: filters });
   return data;
 }

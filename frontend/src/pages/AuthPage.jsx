@@ -47,10 +47,16 @@ function AuthPage({ mode }) {
         setRegistered(true)
       } else {
         const user = await login(email.trim(), password)
-        if (user.role === 'KITCHEN_STAFF') {
-          const requestedPath = location.state?.from
-          const destination =
-            requestedPath && requestedPath.startsWith('/kitchen') ? requestedPath : '/kitchen'
+        const rolePrefix = {
+          KITCHEN_STAFF: '/kitchen',
+          NGO_MANAGER: '/ngo',
+          ADMIN: '/admin',
+        }[user.role]
+        const requestedPath = location.state?.from
+        const destination = rolePrefix && requestedPath?.startsWith(rolePrefix)
+          ? requestedPath
+          : rolePrefix
+        if (destination) {
           navigate(destination, { replace: true })
           return
         }

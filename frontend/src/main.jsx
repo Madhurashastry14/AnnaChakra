@@ -6,6 +6,7 @@ import App from './App.jsx'
 import { AuthProvider } from './auth/AuthContext.jsx'
 import { ToastProvider } from './components/feedback/ToastProvider.jsx'
 import './styles/kitchen.css'
+import './styles/portal.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

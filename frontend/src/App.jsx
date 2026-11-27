@@ -38,6 +38,21 @@ import MatchingPage from './pages/kitchen/MatchingPage.jsx'
 import DonationOfferPage from './pages/kitchen/DonationOfferPage.jsx'
 import DonationDetailPage from './pages/kitchen/DonationDetailPage.jsx'
 import KitchenNotFoundPage from './pages/kitchen/KitchenNotFoundPage.jsx'
+import PortalLayout from './components/portal/PortalLayout.jsx'
+import NgoSetupPage from './pages/ngo/NgoSetupPage.jsx'
+import NgoDashboardPage from './pages/ngo/NgoDashboardPage.jsx'
+import NgoProfilePage from './pages/ngo/NgoProfilePage.jsx'
+import RequirementsPage from './pages/ngo/RequirementsPage.jsx'
+import RequirementFormPage from './pages/ngo/RequirementFormPage.jsx'
+import DonationOffersPage from './pages/ngo/DonationOffersPage.jsx'
+import NgoDonationDetailPage from './pages/ngo/DonationDetailPage.jsx'
+import NgoDeliveriesPage from './pages/ngo/DeliveriesPage.jsx'
+import ImpactAnalyticsPage from './pages/ngo/ImpactAnalyticsPage.jsx'
+import AdminDashboardPage from './pages/admin/AdminDashboardPage.jsx'
+import OrganizationManagementPage from './pages/admin/OrganizationManagementPage.jsx'
+import DonationMonitoringPage from './pages/admin/DonationMonitoringPage.jsx'
+import DeliveryMonitoringPage from './pages/admin/DeliveryMonitoringPage.jsx'
+import PlatformAnalyticsPage from './pages/admin/PlatformAnalyticsPage.jsx'
 import './App.css'
 
 const steps = [
@@ -457,6 +472,42 @@ function App() {
         <Route path="matching" element={<MatchingPage />} />
         <Route path="settings" element={<KitchenSettingsPage />} />
         <Route path="*" element={<KitchenNotFoundPage />} />
+      </Route>
+      <Route
+        path="/ngo"
+        element={
+          <ProtectedRoute roles={["NGO_MANAGER"]}>
+            <PortalLayout role="NGO_MANAGER" />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/ngo/dashboard" replace />} />
+        <Route path="setup" element={<NgoSetupPage />} />
+        <Route path="dashboard" element={<NgoDashboardPage />} />
+        <Route path="profile" element={<NgoProfilePage />} />
+        <Route path="requirements" element={<RequirementsPage />} />
+        <Route path="requirements/new" element={<RequirementFormPage />} />
+        <Route path="requirements/:id/edit" element={<RequirementFormPage />} />
+        <Route path="donations" element={<DonationOffersPage />} />
+        <Route path="donations/:id" element={<NgoDonationDetailPage />} />
+        <Route path="deliveries" element={<NgoDeliveriesPage />} />
+        <Route path="analytics" element={<ImpactAnalyticsPage />} />
+      </Route>
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute roles={["ADMIN"]}>
+            <PortalLayout role="ADMIN" />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="dashboard" element={<AdminDashboardPage />} />
+        <Route path="kitchens" element={<OrganizationManagementPage type="kitchens" />} />
+        <Route path="ngos" element={<OrganizationManagementPage type="ngos" />} />
+        <Route path="donations" element={<DonationMonitoringPage />} />
+        <Route path="deliveries" element={<DeliveryMonitoringPage />} />
+        <Route path="analytics" element={<PlatformAnalyticsPage />} />
       </Route>
       <Route path="/ngo/donations" element={
         <ProtectedRoute roles={["NGO_MANAGER"]}><DonationsPage /></ProtectedRoute>
