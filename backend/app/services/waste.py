@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from sqlalchemy import select, text
 
 from app.models.donation import Donation, DonationItem
-from app.models.enums import DonationStatus, SafetyStatus, ServingUnit, WasteType
+from app.models.enums import SafetyStatus, ServingUnit, WasteType
 from app.models.food import FoodItem
 from app.models.meal_record import MealRecord, MealRecordItem
 from app.models.waste import WasteLog
@@ -14,9 +14,8 @@ from app.models.vision import VisionPrediction
 from app.schemas.waste import SafetyEvidence, WasteRequest, WasteResponse
 from app.services.safety import Screening, current_policy, policy_for_batch, screen_waste
 from app.services.vision import owned_prediction
+from app.services.reservations import food_holds
 
-RESERVED = {DonationStatus.PENDING, DonationStatus.ACCEPTED, DonationStatus.ASSIGNED,
-            DonationStatus.IN_TRANSIT, DonationStatus.COMPLETED}
 UNSERVED = {WasteType.UNSERVED_SURPLUS, WasteType.SPOILED_FOOD}
 
 
@@ -38,7 +37,7 @@ def _donation_allocations(db, waste_id):
     return db.execute(
         select(Donation.status, DonationItem.offered_servings, DonationItem.received_servings)
         .join(DonationItem, DonationItem.donation_id == Donation.id)
-        .where(DonationItem.waste_log_id == waste_id, Donation.status.in_(RESERVED))
+        .where(DonationItem.waste_log_id == waste_id, food_holds(datetime.now(timezone.utc)))
     ).all()
 
 

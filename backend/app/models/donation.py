@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    String, Text, Float, ForeignKey,
+    String, Text, Float, ForeignKey, Boolean, JSON, false,
     DateTime, Enum, func, CheckConstraint,
     UniqueConstraint
 )
@@ -34,8 +34,16 @@ class Donation(Base):
     )
 
     requirement_id: Mapped[int] = mapped_column(
-        ForeignKey("ngo_requirements.id")
+        ForeignKey("ngo_requirements.id"), index=True
     )
+
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    failed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancellation_reason: Mapped[str | None] = mapped_column(Text)
+    failure_reason: Mapped[str | None] = mapped_column(Text)
+    receipt_notes: Mapped[str | None] = mapped_column(Text)
+    is_simulated: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
     status: Mapped[DonationStatus] = mapped_column(
         Enum(DonationStatus, name="donation_status"),
@@ -108,6 +116,8 @@ class DonationItem(Base):
     )
 
     offered_servings: Mapped[float] = mapped_column(Float)
+
+    receipt_evidence: Mapped[dict | None] = mapped_column(JSON)
 
     received_servings: Mapped[float | None] = mapped_column(
         Float,

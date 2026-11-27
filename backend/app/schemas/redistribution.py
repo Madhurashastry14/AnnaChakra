@@ -64,3 +64,19 @@ class MatchRequest(StrictBody):
         if not ids or (self.waste_log_ids and self.items) or len(ids) != len(set(ids)):
             raise ValueError("Provide unique waste log IDs or unique items")
         return self
+
+
+class OfferRequest(StrictBody):
+    requirement_id: PositiveID
+    items: list[OfferItem] = Field(min_length=1, max_length=30)
+    notes: Notes | None = None
+
+    @model_validator(mode="after")
+    def distinct_batches(self):
+        if len({line.waste_log_id for line in self.items}) != len(self.items):
+            raise ValueError("Waste log IDs must be unique")
+        return self
+
+
+class ReasonRequest(StrictBody):
+    reason: Notes

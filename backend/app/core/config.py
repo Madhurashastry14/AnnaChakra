@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     MATCH_MAX_DISTANCE_KM: float = Field(default=25, gt=0, le=100)
     MATCH_ROAD_FACTOR: float = Field(default=1.6, ge=1, le=5)
     MATCH_SPEED_KMH: float = Field(default=20, gt=0, le=60)
+    OFFER_EXPIRY_MINUTES: int = Field(default=30, ge=1, le=1440)
     MATCH_HANDLING_MINUTES: int = Field(default=15, ge=1, le=120)
     MATCH_WEIGHTS: tuple[float, float, float, float] = (0.35, 0.30, 0.20, 0.15)
     WASTE_MIN_RECORDS: int = Field(default=5, ge=2)

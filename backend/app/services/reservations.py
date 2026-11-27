@@ -1,8 +1,9 @@
-﻿"""Unit-aware allocation ledger derived from donation states."""
+"""Unit-aware allocation ledger derived from donation states."""
 from collections import defaultdict
 from decimal import Decimal
+from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from app.models.donation import Donation, DonationItem
 from app.models.enums import DonationStatus
@@ -18,13 +19,31 @@ def amount(value):
     return Decimal(str(value))
 
 
-def capacity_usage(db, requirement_id):
+def expired_offer(donation, now):
+    deadline = donation.expires_at
+    if deadline is not None and deadline.tzinfo is None:
+        deadline = deadline.replace(tzinfo=timezone.utc)
+    return donation.status == DonationStatus.PENDING and (deadline is None or deadline <= now)
+
+
+def live_reservations(now):
+    return Donation.status.in_(PROTECTED) & or_(
+        Donation.status != DonationStatus.PENDING, Donation.expires_at > now,
+    )
+
+
+def food_holds(now):
+    return or_(live_reservations(now), Donation.failed_at.is_not(None))
+
+
+def capacity_usage(db, requirement_id, now=None):
+    now = now or datetime.now(timezone.utc)
     rows = db.execute(select(Donation.status, DonationItem.offered_servings,
                              DonationItem.received_servings, FoodItem.serving_unit)
                       .join(DonationItem, DonationItem.donation_id == Donation.id)
                       .join(WasteLog, WasteLog.id == DonationItem.waste_log_id)
                       .join(FoodItem, FoodItem.id == WasteLog.food_item_id)
-                      .where(Donation.requirement_id == requirement_id, Donation.status.in_(PROTECTED)))
+                      .where(Donation.requirement_id == requirement_id, live_reservations(now)))
     totals = defaultdict(Decimal)
     for status, offered, received, unit in rows:
         totals[unit] += amount((offered if received is None else received)
@@ -38,14 +57,15 @@ def capacity_limits(requirement):
             "piece": amount(requirement.capacity_pieces or 0)}
 
 
-def capacity_left(db, requirement):
-    used = capacity_usage(db, requirement.id)
+def capacity_left(db, requirement, now=None):
+    used = capacity_usage(db, requirement.id, now)
     return {unit: max(Decimal(0), limit - used[unit])
             for unit, limit in capacity_limits(requirement).items()}
 
 
 def food_reserved(db, waste_id, now=None):
+    now = now or datetime.now(timezone.utc)
     values = db.scalars(select(DonationItem.offered_servings).join(
         Donation, Donation.id == DonationItem.donation_id,
-    ).where(DonationItem.waste_log_id == waste_id, Donation.status.in_(PROTECTED)))
+    ).where(DonationItem.waste_log_id == waste_id, food_holds(now)))
     return sum(map(amount, values), Decimal(0))
