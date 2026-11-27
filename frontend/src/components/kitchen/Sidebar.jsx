@@ -30,6 +30,7 @@ export default function Sidebar({
 
   return (
     <aside
+      id="kitchen-navigation"
       className={classNames(
         "k-sidebar",
         collapsed && "is-collapsed",

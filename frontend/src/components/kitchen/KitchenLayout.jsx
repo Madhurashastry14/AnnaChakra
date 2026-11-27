@@ -76,7 +76,7 @@ export default function KitchenLayout() {
   }
 
   return (
-    <div className={`kitchen-app${collapsed ? " sidebar-collapsed" : ""}`}>
+    <div className={`kitchen-app${collapsed ? " k-sidebar-collapsed" : ""}`}>
       <Sidebar
         kitchen={kitchen}
         collapsed={collapsed}
@@ -93,7 +93,7 @@ export default function KitchenLayout() {
         />
       ) : null}
       <div className="k-main">
-        <KitchenHeader kitchen={kitchen} onOpenMobile={() => setMobileOpen(true)} />
+        <KitchenHeader kitchen={kitchen} mobileOpen={mobileOpen} onOpenMobile={() => setMobileOpen(true)} />
         <main className="k-page">
           <Outlet context={{ kitchen, refreshKitchen: loadKitchen }} />
         </main>

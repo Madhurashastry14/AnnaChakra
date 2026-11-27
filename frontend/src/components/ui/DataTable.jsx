@@ -22,7 +22,7 @@ export default function DataTable({ columns, rows, rowKey, empty, loading = fals
             <tr key={rowKey ? rowKey(row) : row.id ?? index}>
               {columns.map((column) => (
                 <td key={column.key} data-label={column.label} className={column.className}>
-                  {column.render ? column.render(row) : row[column.key]}
+                  <div className="k-table-value">{column.render ? column.render(row) : row[column.key]}</div>
                 </td>
               ))}
             </tr>

@@ -6,7 +6,7 @@ import { getPageMeta } from "./navigation.js";
 import { useAuth } from "../../auth/AuthContext.jsx";
 import { labelFor } from "../../utils/format.js";
 
-export default function KitchenHeader({ kitchen, onOpenMobile }) {
+export default function KitchenHeader({ kitchen, mobileOpen, onOpenMobile }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -39,6 +39,8 @@ export default function KitchenHeader({ kitchen, onOpenMobile }) {
           type="button"
           className="k-icon-button k-mobile-menu"
           aria-label="Open navigation"
+          aria-controls="kitchen-navigation"
+          aria-expanded={mobileOpen}
           onClick={onOpenMobile}
         >
           <Menu size={20} />
