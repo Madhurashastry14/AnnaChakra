@@ -318,7 +318,7 @@ export default function KitchenSetupPage() {
             </p>
           </section>
 
-          <section className="k-setup-info-card k-setup-checklist">
+          <section className="k-setup-info-card k-setup-checklist-card">
             <h2>What you can do right away</h2>
             <ul>
               <li><CheckCircle2 size={15} /> Generate demand forecasts</li>

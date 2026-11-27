@@ -2179,12 +2179,34 @@
   margin: 0 auto;
 }
 
+.k-setup-layout > * {
+  min-width: 0;
+}
+
 .k-setup-card {
   padding: 22px;
   background: #fff;
   border: 1px solid var(--k-line);
   border-radius: 18px;
   box-shadow: var(--k-shadow);
+}
+
+.k-setup-card > h1 {
+  margin: 0 0 8px;
+  color: var(--k-ink);
+  font-family: var(--k-serif);
+  font-size: clamp(28px, 3vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.k-setup-card > .k-muted-text {
+  max-width: 68ch;
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .k-setup-aside {
@@ -2204,6 +2226,8 @@
   margin: 0 0 6px;
   font-family: var(--k-serif);
   font-size: 18px;
+  letter-spacing: 0;
+  line-height: 1.25;
 }
 
 .k-setup-info-card p {
@@ -2213,7 +2237,7 @@
   line-height: 1.55;
 }
 
-.k-setup-checklist {
+.k-setup-checklist-card ul {
   display: flex;
   flex-direction: column;
   gap: 7px;
@@ -2222,13 +2246,19 @@
   list-style: none;
 }
 
-.k-setup-checklist li {
+.k-setup-checklist-card li {
   display: flex;
   align-items: flex-start;
   gap: 7px;
   color: var(--k-ink-soft);
   font-size: 11.5px;
   line-height: 1.45;
+}
+
+.k-setup-checklist-card li svg {
+  flex: 0 0 15px;
+  margin-top: 1px;
+  color: var(--k-green-mid);
 }
 
 .k-setup-icon {
@@ -2664,15 +2694,15 @@
 
 .k-quick-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 9px;
 }
 
-.k-quick-card,
 .k-quick-action {
   display: flex;
+  min-width: 0;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 10px;
   padding: 12px;
   color: var(--k-ink);
@@ -2682,25 +2712,24 @@
   border-radius: 10px;
 }
 
-.k-quick-card:hover,
 .k-quick-action:hover {
   background: var(--k-green-soft);
   border-color: #c9d8c3;
 }
 
-.k-quick-card strong,
 .k-quick-action strong {
   display: block;
   font-size: 12px;
 }
 
-.k-quick-card small,
 .k-quick-action small {
   color: var(--k-muted);
   font-size: 10px;
 }
 
 .k-quick-arrow {
+  flex: 0 0 auto;
+  margin-left: auto;
   color: var(--k-green-mid);
 }
 
@@ -2742,6 +2771,9 @@
 }
 
 .k-status-explainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   padding: 11px 13px;
   color: var(--k-ink-soft);
   font-size: 11px;
@@ -2749,6 +2781,19 @@
   background: #f7f9f4;
   border: 1px solid var(--k-line);
   border-radius: 9px;
+}
+
+.k-status-explainer > div {
+  min-width: 0;
+}
+
+.k-status-explainer > div + div {
+  padding-top: 12px;
+  border-top: 1px solid var(--k-line);
+}
+
+.k-status-explainer > div > p {
+  margin-top: 5px;
 }
 
 /* ---------- Settings ---------- */
