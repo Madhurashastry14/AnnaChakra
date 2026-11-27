@@ -2,7 +2,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     String, Text, Float, ForeignKey,
-    DateTime, Boolean, Enum, func,
+    DateTime, Boolean, Enum, JSON, func,
     CheckConstraint
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -122,6 +122,7 @@ class NGORequirement(Base):
             "remaining_capacity >= 0",
             name="ck_ngo_remaining_capacity"
         ),
+        CheckConstraint("capacity_servings >= 0 AND capacity_pieces >= 0", name="ck_ngo_capacity_by_unit"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -130,6 +131,11 @@ class NGORequirement(Base):
         ForeignKey("ngos.id"),
         index=True
     )
+
+    capacity_servings: Mapped[float | None] = mapped_column(Float)
+    capacity_pieces: Mapped[int | None] = mapped_column(Integer)
+    accepted_categories: Mapped[list[str] | None] = mapped_column(JSON)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), onupdate=func.now())
 
     people_to_feed: Mapped[int] = mapped_column(Integer)
 

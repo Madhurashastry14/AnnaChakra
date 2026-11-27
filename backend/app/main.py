@@ -19,6 +19,7 @@ from app.routers.kitchens import router as kitchens_router
 from app.routers.meal_records import router as meal_records_router
 from app.routers.menu import router as menu_router
 from app.routers.ngos import router as ngos_router
+from app.routers.ngo_requirements import router as ngo_requirements_router
 from app.routers.vision import router as vision_router
 from app.routers.waste import router as waste_router
 from app.services.safety import DEFAULT_VERSION, current_policy
@@ -65,6 +66,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(kitchens_router)
 app.include_router(ngos_router)
+app.include_router(ngo_requirements_router)
 app.include_router(delivery_personnel_router)
 app.include_router(food_items_router)
 app.include_router(forecasts_router)
