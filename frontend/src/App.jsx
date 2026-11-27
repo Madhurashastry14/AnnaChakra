@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import {
   ArrowDownRight,
   ArrowRight,
@@ -12,6 +13,7 @@ import {
   Truck,
   X,
 } from 'lucide-react'
+import AuthPage from './pages/AuthPage.jsx'
 import './App.css'
 
 const steps = [
@@ -110,7 +112,7 @@ const navigation = [
   { label: 'Join Us', href: '#join-us' },
 ]
 
-function App() {
+function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const closeMenu = () => setMenuOpen(false)
@@ -150,13 +152,13 @@ function App() {
               ))}
             </div>
             <div className="nav-actions">
-              <a className="login-link" href="/login" onClick={closeMenu}>
+              <Link className="login-link" to="/login" onClick={closeMenu}>
                 Log in
-              </a>
-              <a className="button button-small button-green" href="/register" onClick={closeMenu}>
+              </Link>
+              <Link className="button button-small button-green" to="/register" onClick={closeMenu}>
                 Register
                 <ArrowRight size={15} aria-hidden="true" />
-              </a>
+              </Link>
             </div>
           </nav>
         </div>
@@ -173,16 +175,16 @@ function App() {
                 coordinate donations — so good food can find the people who need it.
               </p>
               <div className="hero-actions">
-                <a className="button button-green" href="/register?role=kitchen">
+                <Link className="button button-green" to="/register?role=kitchen">
                   Join as Kitchen
                   <ArrowRight size={17} aria-hidden="true" />
-                </a>
-                <a className="button button-outline" href="/register?role=ngo">
+                </Link>
+                <Link className="button button-outline" to="/register?role=ngo">
                   Join as NGO
-                </a>
+                </Link>
               </div>
               <p className="existing-user">
-                Already part of the circle? <a href="/login">Log in</a>
+                Already part of the circle? <Link to="/login">Log in</Link>
               </p>
               <a className="hero-scroll" href="#about">
                 Discover AnnaChakra <ArrowDownRight size={15} aria-hidden="true" />
@@ -319,10 +321,10 @@ function App() {
                         <li key={benefit}><Check size={16} aria-hidden="true" />{benefit}</li>
                       ))}
                     </ul>
-                    <a className="button button-green role-button" href={role.href}>
+                    <Link className="button button-green role-button" to={role.href}>
                       {role.action}
                       <ArrowRight size={16} aria-hidden="true" />
-                    </a>
+                    </Link>
                   </article>
                 )
               })}
@@ -363,9 +365,9 @@ function App() {
           </div>
           <div className="footer-links">
             <span className="footer-label">Get started</span>
-            <a href="/login">Log in</a>
-            <a href="/register?role=kitchen">Kitchen registration</a>
-            <a href="/register?role=ngo">NGO registration</a>
+            <Link to="/login">Log in</Link>
+            <Link to="/register?role=kitchen">Kitchen registration</Link>
+            <Link to="/register?role=ngo">NGO registration</Link>
           </div>
         </div>
         <div className="page-width footer-bottom">
@@ -374,6 +376,25 @@ function App() {
         </div>
       </footer>
     </div>
+  )
+}
+
+function App() {
+  const location = useLocation()
+
+  return (
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route
+        path="/login"
+        element={<AuthPage key={`${location.pathname}${location.search}`} mode="login" />}
+      />
+      <Route
+        path="/register"
+        element={<AuthPage key={`${location.pathname}${location.search}`} mode="register" />}
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   )
 }
 
