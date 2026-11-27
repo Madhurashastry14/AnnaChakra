@@ -25,6 +25,7 @@ export default function DonationsPage() {
       />
 
       <EmptyState
+        className="k-donations-empty-state"
         icon={HandHeart}
         title="Donation matching is not available yet"
         description="The current backend does not expose donation, NGO-matching or delivery-dispatch endpoints for kitchen staff. Nothing is invented here."
@@ -60,7 +61,7 @@ export default function DonationsPage() {
             </li>
           </ul>
 
-          <div className="k-callout k-callout-warning">
+          <div className="k-callout k-callout-warning k-donations-warning">
             <Info size={17} aria-hidden="true" />
             <div>
               <strong>No donation records are created from this page</strong>

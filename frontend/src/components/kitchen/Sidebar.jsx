@@ -39,8 +39,15 @@ export default function Sidebar({
       aria-label="Kitchen navigation"
     >
       <div className="k-sidebar-brand-row">
-        <Link className="k-brand" to="/kitchen/dashboard" onClick={onCloseMobile} aria-label="AnnaChakra kitchen dashboard">
-          <span className="k-brand-mark" aria-hidden="true"><Leaf size={20} /></span>
+        <Link
+          className="k-brand"
+          to="/kitchen/dashboard"
+          onClick={onCloseMobile}
+          aria-label="AnnaChakra kitchen dashboard"
+        >
+          <span className="k-brand-mark" aria-hidden="true">
+            <Leaf size={20} />
+          </span>
           <span className="k-brand-text">
             Anna<span>Chakra</span>
             <small>Kitchen workspace</small>
@@ -57,10 +64,14 @@ export default function Sidebar({
       </div>
 
       <div className="k-sidebar-kitchen">
-        <span className="k-sidebar-kitchen-icon" aria-hidden="true"><CookingPot size={17} /></span>
+        <span className="k-sidebar-kitchen-icon" aria-hidden="true">
+          <CookingPot size={17} />
+        </span>
         <div className="k-sidebar-kitchen-text">
           <strong>{kitchen?.name ?? "Your kitchen"}</strong>
-          {kitchen ? <VerificationBadge status={kitchen.verification_status} /> : null}
+          {kitchen ? (
+            <VerificationBadge status={kitchen.verification_status} />
+          ) : null}
         </div>
       </div>
 
@@ -98,7 +109,7 @@ export default function Sidebar({
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? <ChevronsRight size={17} /> : <ChevronsLeft size={17} />}
-          <span className="k-nav-label">Collapse</span>
+          <span className="k-nav-label"></span>
         </button>
 
         <div className="k-sidebar-user">

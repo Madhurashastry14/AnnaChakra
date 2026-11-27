@@ -1655,6 +1655,14 @@
   margin-top: 14px;
 }
 
+.k-donations-empty-state {
+  margin-bottom: 18px;
+}
+
+.k-donations-warning {
+  margin: 16px 0 0;
+}
+
 .k-error-state {
   display: flex;
   align-items: flex-start;
@@ -2514,7 +2522,22 @@
   gap: 9px;
 }
 
+.k-radio-card {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.k-radio-card input {
+  flex: 0 0 auto;
+  margin: 3px 0 0;
+}
+
 .k-radio-card-body {
+  display: block;
+  min-width: 0;
+  flex: 1;
   padding: 10px 11px;
   background: #fff;
   border: 1px solid var(--k-line-strong);
