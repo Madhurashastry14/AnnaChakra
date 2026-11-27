@@ -33,6 +33,10 @@ import AnalyticsPage from './pages/kitchen/AnalyticsPage.jsx'
 import PortionRecommendationsPage from './pages/kitchen/PortionRecommendationsPage.jsx'
 import DeliveryPage from './pages/kitchen/DeliveryPage.jsx'
 import DonationsPage from './pages/kitchen/DonationsPage.jsx'
+import SurplusPage from './pages/kitchen/SurplusPage.jsx'
+import MatchingPage from './pages/kitchen/MatchingPage.jsx'
+import DonationOfferPage from './pages/kitchen/DonationOfferPage.jsx'
+import DonationDetailPage from './pages/kitchen/DonationDetailPage.jsx'
 import KitchenNotFoundPage from './pages/kitchen/KitchenNotFoundPage.jsx'
 import './App.css'
 
@@ -447,6 +451,10 @@ function App() {
         <Route path="recommendations" element={<PortionRecommendationsPage />} />
         <Route path="delivery" element={<DeliveryPage />} />
         <Route path="donations" element={<DonationsPage />} />
+        <Route path="donations/new" element={<DonationOfferPage />} />
+        <Route path="donations/:id" element={<DonationDetailPage />} />
+        <Route path="surplus" element={<SurplusPage />} />
+        <Route path="matching" element={<MatchingPage />} />
         <Route path="settings" element={<KitchenSettingsPage />} />
         <Route path="*" element={<KitchenNotFoundPage />} />
       </Route>
