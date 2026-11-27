@@ -10,7 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
 from app.models.enums import VerificationStatus
 from datetime import date
-from sqlalchemy import Date, Integer
+from sqlalchemy import Date, Integer, false
 
 class Kitchen(Base):
     __tablename__ = "kitchens"
@@ -43,6 +43,7 @@ class Kitchen(Base):
         Enum(VerificationStatus, name="verification_status"),
         default=VerificationStatus.PENDING
     )
+    is_simulated: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -81,6 +82,7 @@ class NGO(Base):
         Enum(VerificationStatus, name="verification_status"),
         default=VerificationStatus.PENDING
     )
+    is_simulated: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

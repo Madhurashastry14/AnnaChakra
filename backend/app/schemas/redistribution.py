@@ -46,3 +46,21 @@ class RequirementResponse(RequirementCreate):
     remaining_capacity_by_unit: dict[str, float]
     created_at: datetime
     updated_at: datetime | None
+
+
+class OfferItem(StrictBody):
+    waste_log_id: PositiveID
+    offered_servings: Quantity
+
+
+class MatchRequest(StrictBody):
+    waste_log_ids: list[PositiveID] = Field(default_factory=list, max_length=30)
+    items: list[OfferItem] = Field(default_factory=list, max_length=30)
+    max_distance_km: Annotated[float, Field(gt=0, le=100, allow_inf_nan=False)] | None = None
+
+    @model_validator(mode="after")
+    def validate_items(self):
+        ids = self.waste_log_ids or [item.waste_log_id for item in self.items]
+        if not ids or (self.waste_log_ids and self.items) or len(ids) != len(set(ids)):
+            raise ValueError("Provide unique waste log IDs or unique items")
+        return self

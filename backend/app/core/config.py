@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     VISION_CONFIDENCE_THRESHOLD: float = Field(default=0.65, ge=0, le=1)
     SAFETY_POLICY_PATH: Path | None = None
     REDISTRIBUTION_TIMEZONE: str = "Asia/Kolkata"
+    MATCH_MAX_DISTANCE_KM: float = Field(default=25, gt=0, le=100)
+    MATCH_ROAD_FACTOR: float = Field(default=1.6, ge=1, le=5)
+    MATCH_SPEED_KMH: float = Field(default=20, gt=0, le=60)
+    MATCH_HANDLING_MINUTES: int = Field(default=15, ge=1, le=120)
+    MATCH_WEIGHTS: tuple[float, float, float, float] = (0.35, 0.30, 0.20, 0.15)
     WASTE_MIN_RECORDS: int = Field(default=5, ge=2)
     WASTE_MIN_COVERAGE: float = Field(default=80, ge=0, le=100)
     WASTE_SURPLUS_THRESHOLD: float = Field(default=15, gt=0, le=100)
@@ -32,7 +37,7 @@ class Settings(BaseSettings):
 
     MENU_SCORE_WEIGHTS: tuple[float, float, float, float, float] = (0.30, 0.25, 0.25, 0.10, 0.10)
 
-    @field_validator("MENU_SCORE_WEIGHTS")
+    @field_validator("MENU_SCORE_WEIGHTS", "MATCH_WEIGHTS")
     @classmethod
     def valid_menu_weights(cls, values):
         if not all(isfinite(value) and 0 <= value <= 1 for value in values) or not sum(values):

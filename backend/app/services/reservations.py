@@ -42,3 +42,10 @@ def capacity_left(db, requirement):
     used = capacity_usage(db, requirement.id)
     return {unit: max(Decimal(0), limit - used[unit])
             for unit, limit in capacity_limits(requirement).items()}
+
+
+def food_reserved(db, waste_id, now=None):
+    values = db.scalars(select(DonationItem.offered_servings).join(
+        Donation, Donation.id == DonationItem.donation_id,
+    ).where(DonationItem.waste_log_id == waste_id, Donation.status.in_(PROTECTED)))
+    return sum(map(amount, values), Decimal(0))

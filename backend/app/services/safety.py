@@ -69,6 +69,20 @@ def _is_demo_policy(path: Path, policy: SafetyPolicy) -> bool:
     )
 
 
+def environment_allows(simulated):
+    environment = settings.APP_ENV.strip().casefold()
+    return environment in {"demo", "test"} if simulated else environment != "demo"
+
+
+def policy_for_batch(policy, kitchen, waste):
+    simulated = bool(getattr(waste, "is_simulated", False))
+    if (simulated != bool(getattr(kitchen, "is_simulated", False))
+            or not environment_allows(simulated) or policy is None):
+        return None
+    path = _resolved_policy_path(settings.SAFETY_POLICY_PATH) if settings.SAFETY_POLICY_PATH else Path("")
+    return policy if _is_demo_policy(path, policy) == simulated else None
+
+
 def current_policy() -> SafetyPolicy | None:
     if settings.SAFETY_POLICY_PATH is None:
         return None

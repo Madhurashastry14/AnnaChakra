@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    String, Text, Float, Boolean, ForeignKey, JSON,
+    String, Text, Float, Boolean, ForeignKey, JSON, false,
     DateTime, Enum, func, CheckConstraint
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -41,6 +41,8 @@ class WasteLog(Base):
         nullable=True,
         index=True
     )
+
+    is_simulated: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
     food_item_id: Mapped[int] = mapped_column(
         ForeignKey("food_items.id")

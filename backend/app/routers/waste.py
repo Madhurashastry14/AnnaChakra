@@ -7,12 +7,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_kitchen
+from app.core.dependencies import get_current_kitchen, require_verified_kitchen
 from app.models.enums import SafetyStatus, WasteType
 from app.models.food import FoodItem
 from app.models.organization import Kitchen
 from app.models.waste import WasteLog
 from app.schemas.waste import SafetyCheck, SafetyResponse, WastePatch, WasteRequest, WasteResponse
+from app.services.matching import describe_surplus, read_surplus
+from app.services.ngo_requirements import now_utc
 from app.services.waste import owned_waste, patch_waste, save_waste, waste_response
 
 logger = logging.getLogger(__name__)
@@ -67,6 +69,12 @@ def listing(waste_type: WasteType | None = None, safety_status: SafetyStatus | N
             if len(matches) == limit:
                 break
     return matches
+
+
+@router.get("/available-surplus")
+def available_surplus(kitchen: Kitchen = Depends(require_verified_kitchen), db: Session = Depends(get_db)):
+    now = now_utc()
+    return [describe_surplus(row, now) for row in read_surplus(db, kitchen, now=now)]
 
 
 @router.get("/{waste_id}", response_model=WasteResponse)

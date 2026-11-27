@@ -12,7 +12,7 @@ from app.models.meal_record import MealRecord, MealRecordItem
 from app.models.waste import WasteLog
 from app.models.vision import VisionPrediction
 from app.schemas.waste import SafetyEvidence, WasteRequest, WasteResponse
-from app.services.safety import Screening, current_policy, screen_waste
+from app.services.safety import Screening, current_policy, policy_for_batch, screen_waste
 from app.services.vision import owned_prediction
 
 RESERVED = {DonationStatus.PENDING, DonationStatus.ACCEPTED, DonationStatus.ASSIGNED,
@@ -100,7 +100,7 @@ def response_values(row):
 
 def screening_for_use(row, food, kitchen, now=None):
     now = now or datetime.now(timezone.utc)
-    result = screen_waste(row, food.name, getattr(kitchen, "verification_status", None), current_policy(), now)
+    result = screen_waste(row, food.name, getattr(kitchen, "verification_status", None), policy_for_batch(current_policy(), kitchen, row), now)
     if row.screened_at is None:
         # Preserve legacy screening information without treating it as validated evidence.
         legacy_expired = row.safe_until is not None and utc(row.safe_until) <= now
@@ -160,7 +160,7 @@ def save_waste(db, kitchen, request, current=None):
         _validate_image_accounting(db, prediction, kitchen_id, current)
     _validate_accounting(db, kitchen_id, request, current)
     update_prediction = current is None or current.prediction_id != request.prediction_id
-    row = current if current is not None else WasteLog(kitchen_id=kitchen_id)
+    row = current if current is not None else WasteLog(kitchen_id=kitchen_id, is_simulated=bool(getattr(kitchen, "is_simulated", False)))
     for name, value in values.items():
         setattr(row, name, value)
     if update_prediction:
@@ -174,7 +174,7 @@ def save_waste(db, kitchen, request, current=None):
                               if food.serving_unit == ServingUnit.PIECE
                               and count.get("count_food_item_id") == food.id else None)
     row.safety_evidence = evidence
-    check = screen_waste(row, food.name, getattr(kitchen, "verification_status", None), current_policy())
+    check = screen_waste(row, food.name, getattr(kitchen, "verification_status", None), policy_for_batch(current_policy(), kitchen, row))
     row.safety_status = check.status
     row.screened_at = check.screened_at
     row.screening_reasons = check.reasons
