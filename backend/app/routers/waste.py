@@ -15,7 +15,14 @@ from app.models.waste import WasteLog
 from app.schemas.waste import SafetyCheck, SafetyResponse, WastePatch, WasteRequest, WasteResponse
 from app.services.matching import describe_surplus, read_surplus
 from app.services.ngo_requirements import now_utc
-from app.services.waste import owned_waste, patch_waste, save_waste, waste_response
+from app.services.waste import (
+    donation_allocations_bulk,
+    owned_waste,
+    patch_waste,
+    save_waste,
+    waste_response,
+)
+from app.services.safety import current_policy
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/waste-logs", tags=["Waste Logs"])
@@ -56,11 +63,17 @@ def listing(waste_type: WasteType | None = None, safety_status: SafetyStatus | N
     if created_to is not None:
         query = query.where(WasteLog.created_at <= created_to)
     if safety_status is None:
-        return [waste_response(db, row, kitchen, food) for row, food in db.execute(query.offset(offset).limit(limit))]
+        rows = list(db.execute(query.offset(offset).limit(limit)))
+        policy = current_policy()
+        allocations = donation_allocations_bulk(db, [row.id for row, _ in rows])
+        return [waste_response(db, row, kitchen, food, policy=policy,
+                               allocations=allocations.get(row.id, []))
+                for row, food in rows]
     matches = []
     skipped = 0
+    policy = current_policy()
     for row, food in db.execute(query.execution_options(yield_per=100)):
-        result = waste_response(db, row, kitchen, food)
+        result = waste_response(db, row, kitchen, food, policy=policy)
         if result.safety_status == safety_status:
             if skipped < offset:
                 skipped += 1

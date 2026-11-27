@@ -38,8 +38,8 @@ export function SafetyBadge({ status, className = "" }) {
   );
 }
 
-export function RedistributionBadge({ status }) {
-  const eligible = status === "ELIGIBLE";
+export function RedistributionBadge({ status, wasteType }) {
+  const eligible = wasteType ? wasteType !== "PLATE_WASTE" : status === "ELIGIBLE";
   return <Badge tone={eligible ? "success" : "danger"}>{eligible ? "Eligible" : "Ineligible"}</Badge>;
 }
 

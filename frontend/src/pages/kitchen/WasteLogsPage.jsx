@@ -240,7 +240,7 @@ export default function WasteLogsPage() {
                 {
                   key: "safety",
                   label: "Redistribution",
-                  render: (row) => <RedistributionBadge status={row.safety_status} />,
+                  render: (row) => <RedistributionBadge status={row.safety_status} wasteType={row.waste_type} />,
                 },
                 {
                   key: "available",

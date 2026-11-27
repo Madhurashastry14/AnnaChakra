@@ -237,4 +237,4 @@ def test_plate_waste_remains_ineligible():
     )
 
     assert result.status == SafetyStatus.INELIGIBLE
-    assert any("Only unserved surplus" in reason for reason in result.reasons)
+    assert any("Plate waste" in reason for reason in result.reasons)

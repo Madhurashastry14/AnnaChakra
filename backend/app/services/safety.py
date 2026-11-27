@@ -114,8 +114,8 @@ def screen_waste(record, food_name, kitchen_status, policy, now=None):
     version = policy.version if policy else DEFAULT_VERSION
     evidence = record.safety_evidence or {}
     pending, failed = [], []
-    if record.waste_type != WasteType.UNSERVED_SURPLUS:
-        failed.append("Only unserved surplus can be considered for redistribution.")
+    if record.waste_type == WasteType.PLATE_WASTE:
+        failed.append("Plate waste cannot be considered for redistribution.")
     if evidence.get("contamination_suspected") is True:
         failed.append("Contamination has been reported.")
     if kitchen_status != VerificationStatus.VERIFIED:

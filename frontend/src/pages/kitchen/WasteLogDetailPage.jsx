@@ -122,7 +122,7 @@ export default function WasteLogDetailPage() {
           {log.is_simulated ? <span className="k-demo-label">Demonstration data only. Not approved for actual consumption.</span> : null}
           <div>
             <dt>Redistribution</dt>
-            <dd><RedistributionBadge status={log.safety_status} /></dd>
+            <dd><RedistributionBadge status={log.safety_status} wasteType={log.waste_type} /></dd>
           </div>
           <div>
             <dt>Available for redistribution</dt>

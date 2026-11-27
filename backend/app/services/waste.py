@@ -18,6 +18,7 @@ from app.services.reservations import food_holds
 
 SIMULATION_DECLARATION_VERSION = "simulation-declaration-v1"
 UNSERVED = {WasteType.UNSERVED_SURPLUS, WasteType.SPOILED_FOOD}
+_UNSET = object()
 
 
 def utc(value):
@@ -40,6 +41,22 @@ def _donation_allocations(db, waste_id):
         .join(DonationItem, DonationItem.donation_id == Donation.id)
         .where(DonationItem.waste_log_id == waste_id, food_holds(datetime.now(timezone.utc)))
     ).all()
+
+
+def donation_allocations_bulk(db, waste_ids):
+    """Fetch allocations for many logs at once to avoid one query per row."""
+    if not waste_ids:
+        return {}
+    rows = db.execute(
+        select(DonationItem.waste_log_id, Donation.status,
+               DonationItem.offered_servings, DonationItem.received_servings)
+        .join(Donation, Donation.id == DonationItem.donation_id)
+        .where(DonationItem.waste_log_id.in_(waste_ids), food_holds(datetime.now(timezone.utc)))
+    ).all()
+    grouped = {}
+    for waste_id, status, offered, received in rows:
+        grouped.setdefault(waste_id, []).append((status, offered, received))
+    return grouped
 
 
 def _validate_accounting(db, kitchen_id, request, current):
@@ -98,10 +115,11 @@ def response_values(row):
     }
 
 
-def screen_batch(row, food, kitchen, now=None):
+def screen_batch(row, food, kitchen, now=None, *, policy=_UNSET):
     if not row.is_simulated:
+        policy = current_policy() if policy is _UNSET else policy
         return screen_waste(row, food.name, getattr(kitchen, "verification_status", None),
-                            policy_for_batch(current_policy(), kitchen, row), now)
+                            policy_for_batch(policy, kitchen, row), now)
     now = now or datetime.now(timezone.utc)
     evidence = row.safety_evidence or {}
     if "discard_at" in evidence:
@@ -114,9 +132,10 @@ def screen_batch(row, food, kitchen, now=None):
         reasons.append("This simulated batch is outside the demonstration environment.")
     if kitchen.verification_status != VerificationStatus.VERIFIED:
         reasons.append("The demonstration kitchen must be verified.")
-    if (row.waste_type != WasteType.UNSERVED_SURPLUS or not isfinite(row.confirmed_servings)
-            or row.confirmed_servings <= 0):
-        reasons.append("Only unserved surplus with a positive quantity can be offered.")
+    if row.waste_type == WasteType.PLATE_WASTE:
+        reasons.append("Plate waste cannot be offered for redistribution.")
+    if not isfinite(row.confirmed_servings) or row.confirmed_servings <= 0:
+        reasons.append("A positive quantity is required for redistribution.")
     if (not row.safe_handling_confirmed or evidence.get("unserved_confirmed") is not True
             or evidence.get("contamination_suspected") is not False):
         reasons.append("Staff must confirm unserved food, appropriate handling and no known contamination.")
@@ -128,10 +147,10 @@ def screen_batch(row, food, kitchen, now=None):
                      now, deadline, SIMULATION_DECLARATION_VERSION)
 
 
-def screening_for_use(row, food, kitchen, now=None):
+def screening_for_use(row, food, kitchen, now=None, *, policy=_UNSET):
     now = now or datetime.now(timezone.utc)
     try:
-        result = screen_batch(row, food, kitchen, now)
+        result = screen_batch(row, food, kitchen, now, policy=policy)
     except (TypeError, ValueError, OverflowError):
         status = SafetyStatus.INELIGIBLE if row.is_simulated else SafetyStatus.PENDING
         return Screening(status, ["Stored safety evidence is invalid."], now, None, "invalid-evidence")
@@ -154,12 +173,13 @@ def screening_for_use(row, food, kitchen, now=None):
     return result
 
 
-def waste_response(db, row, kitchen, food=None):
+def waste_response(db, row, kitchen, food=None, *, policy=_UNSET, allocations=None):
     food = food if food is not None else db.get(FoodItem, row.food_item_id)
-    check = screening_for_use(row, food, kitchen)
+    check = screening_for_use(row, food, kitchen, policy=policy)
     available = 0
     if check.status == SafetyStatus.ELIGIBLE:
-        reserved = fsum(offered for _, offered, _ in _donation_allocations(db, row.id))
+        rows = _donation_allocations(db, row.id) if allocations is None else allocations
+        reserved = fsum(offered for _, offered, _ in rows)
         available = max(0, row.confirmed_servings - reserved)
     return WasteResponse(
         **response_values(row), id=row.id, created_at=utc(row.created_at),
