@@ -14,6 +14,27 @@ import {
   X,
 } from 'lucide-react'
 import AuthPage from './pages/AuthPage.jsx'
+import ProtectedRoute from './auth/ProtectedRoute.jsx'
+import KitchenLayout from './components/kitchen/KitchenLayout.jsx'
+import KitchenSetupPage from './pages/kitchen/KitchenSetupPage.jsx'
+import KitchenSettingsPage from './pages/kitchen/KitchenSettingsPage.jsx'
+import KitchenDashboardPage from './pages/kitchen/KitchenDashboardPage.jsx'
+import MenuPlannerPage from './pages/kitchen/MenuPlannerPage.jsx'
+import ForecastPage from './pages/kitchen/ForecastPage.jsx'
+import ForecastHistoryPage from './pages/kitchen/ForecastHistoryPage.jsx'
+import ForecastDetailPage from './pages/kitchen/ForecastDetailPage.jsx'
+import MealRecordsPage from './pages/kitchen/MealRecordsPage.jsx'
+import MealRecordFormPage from './pages/kitchen/MealRecordFormPage.jsx'
+import MealRecordDetailPage from './pages/kitchen/MealRecordDetailPage.jsx'
+import ScannerPage from './pages/kitchen/ScannerPage.jsx'
+import WasteLogsPage from './pages/kitchen/WasteLogsPage.jsx'
+import WasteLogFormPage from './pages/kitchen/WasteLogFormPage.jsx'
+import WasteLogDetailPage from './pages/kitchen/WasteLogDetailPage.jsx'
+import AnalyticsPage from './pages/kitchen/AnalyticsPage.jsx'
+import PortionRecommendationsPage from './pages/kitchen/PortionRecommendationsPage.jsx'
+import DeliveryPage from './pages/kitchen/DeliveryPage.jsx'
+import DonationsPage from './pages/kitchen/DonationsPage.jsx'
+import KitchenNotFoundPage from './pages/kitchen/KitchenNotFoundPage.jsx'
 import './App.css'
 
 const steps = [
@@ -393,6 +414,43 @@ function App() {
         path="/register"
         element={<AuthPage key={`${location.pathname}${location.search}`} mode="register" />}
       />
+      <Route
+        path="/kitchen/setup"
+        element={
+          <ProtectedRoute roles={["KITCHEN_STAFF"]}>
+            <KitchenSetupPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/kitchen"
+        element={
+          <ProtectedRoute roles={["KITCHEN_STAFF"]}>
+            <KitchenLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/kitchen/dashboard" replace />} />
+        <Route path="dashboard" element={<KitchenDashboardPage />} />
+        <Route path="menu-planner" element={<MenuPlannerPage />} />
+        <Route path="forecast" element={<ForecastPage />} />
+        <Route path="forecasts" element={<ForecastHistoryPage />} />
+        <Route path="forecasts/:id" element={<ForecastDetailPage />} />
+        <Route path="meal-records" element={<MealRecordsPage />} />
+        <Route path="meal-records/new" element={<MealRecordFormPage />} />
+        <Route path="meal-records/:id" element={<MealRecordDetailPage />} />
+        <Route path="scanner" element={<ScannerPage />} />
+        <Route path="waste-logs" element={<WasteLogsPage />} />
+        <Route path="waste-logs/new" element={<WasteLogFormPage />} />
+        <Route path="waste-logs/:id/edit" element={<WasteLogFormPage />} />
+        <Route path="waste-logs/:id" element={<WasteLogDetailPage />} />
+        <Route path="analytics" element={<AnalyticsPage />} />
+        <Route path="recommendations" element={<PortionRecommendationsPage />} />
+        <Route path="delivery" element={<DeliveryPage />} />
+        <Route path="donations" element={<DonationsPage />} />
+        <Route path="settings" element={<KitchenSettingsPage />} />
+        <Route path="*" element={<KitchenNotFoundPage />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

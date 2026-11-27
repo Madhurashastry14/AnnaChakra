@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Leaf, LockKeyhole, Mail, UserRound } from 'lucide-react'
 import api from '../services/api.js'
+import { useAuth } from '../auth/AuthContext.jsx'
 import './AuthPage.css'
 
 function getErrorMessage(error) {
@@ -14,6 +15,8 @@ function getErrorMessage(error) {
 
 function AuthPage({ mode }) {
   const location = useLocation()
+  const navigate = useNavigate()
+  const { login, logout } = useAuth()
   const isRegister = mode === 'register'
   const requestedRole = new URLSearchParams(location.search).get('role')
   const [name, setName] = useState('')
@@ -22,7 +25,9 @@ function AuthPage({ mode }) {
   const [role, setRole] = useState(requestedRole === 'ngo' ? 'NGO_MANAGER' : 'KITCHEN_STAFF')
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(
+    location.state?.expired ? 'Your session expired. Please log in again.' : '',
+  )
   const [registered, setRegistered] = useState(false)
   const [signedInUser, setSignedInUser] = useState(null)
 
@@ -41,12 +46,15 @@ function AuthPage({ mode }) {
         })
         setRegistered(true)
       } else {
-        const { data } = await api.post('/api/v1/auth/login', {
-          email: email.trim(),
-          password,
-        })
-        sessionStorage.setItem('access_token', data.access_token)
-        setSignedInUser(data.user)
+        const user = await login(email.trim(), password)
+        if (user.role === 'KITCHEN_STAFF') {
+          const requestedPath = location.state?.from
+          const destination =
+            requestedPath && requestedPath.startsWith('/kitchen') ? requestedPath : '/kitchen'
+          navigate(destination, { replace: true })
+          return
+        }
+        setSignedInUser(user)
       }
     } catch (requestError) {
       setError(getErrorMessage(requestError))
@@ -56,7 +64,7 @@ function AuthPage({ mode }) {
   }
 
   function signOut() {
-    sessionStorage.removeItem('access_token')
+    logout()
     setSignedInUser(null)
     setPassword('')
   }
