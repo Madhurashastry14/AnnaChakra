@@ -538,17 +538,6 @@ export default function DeliveryPage() {
         ) : null}
       </Card>
 
-      <Card>
-        <CardHeader
-          icon={Truck}
-          title="Delivery personnel"
-          subtitle="Assignments are limited to active people managed by this kitchen."
-        />
-        <div className="k-card-body">
-          <p>Manage the people who may collect and deliver food for this kitchen. Their name and phone number are shown at assignment.</p>
-        </div>
-      </Card>
-
       <Modal
         open={modalOpen}
         onClose={() => {
