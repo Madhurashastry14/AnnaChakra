@@ -8,7 +8,7 @@ from app.core.dependencies import get_current_kitchen
 from app.models.meal_record import MealRecord
 from app.models.organization import Kitchen
 from app.schemas.meal_record import MealRecordPatch, MealRecordRequest, MealRecordResponse
-from app.services.meal_waste import meal_waste_summary
+from app.services.meal_waste import meal_waste_summary, surplus_drafts
 from app.services.meal_records import meal_response, owned_meal, patch_meal, save_meal
 
 router = APIRouter(prefix="/api/v1/meal-records", tags=["Meal Records"])
@@ -43,6 +43,12 @@ def list_meals(kitchen: Kitchen = Depends(get_current_kitchen), db: Session = De
 def meal_detail(record_id: int, kitchen: Kitchen = Depends(get_current_kitchen),
                 db: Session = Depends(get_db)):
     return meal_response(db, owned_meal(db, kitchen.id, record_id))
+
+
+@router.get("/{record_id}/surplus-drafts")
+def draft_surplus(record_id: int, kitchen: Kitchen = Depends(get_current_kitchen),
+                  db: Session = Depends(get_db)):
+    return surplus_drafts(db, owned_meal(db, kitchen.id, record_id), kitchen)
 
 
 @router.get("/{record_id}/waste-summary")
