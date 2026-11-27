@@ -60,6 +60,10 @@ function AuthPage({ mode }) {
           navigate(destination, { replace: true })
           return
         }
+        if (user.role === 'NGO_MANAGER') {
+          navigate('/ngo/donations', { replace: true })
+          return
+        }
         setSignedInUser(user)
       }
     } catch (requestError) {

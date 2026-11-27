@@ -509,6 +509,9 @@ function App() {
         <Route path="deliveries" element={<DeliveryMonitoringPage />} />
         <Route path="analytics" element={<PlatformAnalyticsPage />} />
       </Route>
+      <Route path="/ngo/donations" element={
+        <ProtectedRoute roles={["NGO_MANAGER"]}><DonationsPage /></ProtectedRoute>
+      } />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
