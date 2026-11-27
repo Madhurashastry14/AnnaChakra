@@ -2526,6 +2526,12 @@
   gap: 12px;
 }
 
+.k-forecast-item-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, max-content);
+  margin-bottom: 10px;
+}
+
 .k-forecast-item-head h3,
 .k-meal-item-head h3 {
   margin: 0;
@@ -2535,12 +2541,14 @@
 
 .k-forecast-item-head > div:first-child {
   min-width: 0;
-  flex: 1 1 240px;
 }
 
 .k-forecast-prep {
+  box-sizing: border-box;
+  width: max-content;
+  min-width: 0;
   max-width: 100%;
-  flex: 0 1 auto;
+  justify-self: end;
   padding: 9px 11px;
   background: #f7f9f4;
   border-radius: 8px;
@@ -3899,6 +3907,14 @@
 }
 
 @container (max-width: 600px) {
+  .k-forecast-item-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .k-forecast-prep {
+    justify-self: start;
+  }
+
   .k-form-grid-3 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

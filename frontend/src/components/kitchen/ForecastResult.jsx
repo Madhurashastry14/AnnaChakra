@@ -7,13 +7,7 @@ import {
   Printer,
   Users,
 } from "lucide-react";
-import {
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { Badge, MethodBadge, RoleBadge } from "../ui/Badge.jsx";
 import Button from "../ui/Button.jsx";
 import { EmptyState } from "../ui/States.jsx";
@@ -27,12 +21,19 @@ import {
   percent,
   unitLabel,
 } from "../../utils/format.js";
-import { consolidateIngredients } from "../../utils/ingredients.js";
 
-const DINER_COLORS = ["#3f7a58", "#d8a45d", "#c47064", "#5d8ba8", "#8b78a5", "#879f69"];
+const DINER_COLORS = [
+  "#3f7a58",
+  "#d8a45d",
+  "#c47064",
+  "#5d8ba8",
+  "#8b78a5",
+  "#879f69",
+];
 
 const METHOD_NOTES = {
-  BASELINE: "Uses catalogue defaults and uptake assumptions. It does not learn from this kitchen’s recorded history.",
+  BASELINE:
+    "Uses catalogue defaults and uptake assumptions. It does not learn from this kitchen’s recorded history.",
   LOCAL_HISTORY: "Uses this kitchen’s recorded meal history.",
   ML: "Uses the platform’s machine-learning model. Treat the result as guidance, not a guarantee.",
 };
@@ -45,7 +46,8 @@ function DinerTooltip({ active, payload }) {
       <strong>{dish.name}</strong>
       <p>Estimated diners: {formatNumber(dish.estimated_diners, 0)}</p>
       <p>
-        Preference share: {dish.preference_share == null
+        Preference share:{" "}
+        {dish.preference_share == null
           ? "Not returned"
           : percent(Number(dish.preference_share) * 100)}
       </p>
@@ -53,25 +55,19 @@ function DinerTooltip({ active, payload }) {
   );
 }
 
-export default function ForecastResult({ forecast, foods = [], showActions = true }) {
-  const consolidated = useMemo(
-    () => consolidateIngredients(forecast?.items ?? []),
-    [forecast],
-  );
-
-  const warnings = useMemo(() => {
-    const unique = new Map();
-    for (const item of forecast?.items ?? []) {
-      for (const warning of item.warnings ?? []) {
-        const key = `${item.food_item_id}-${warning}`;
-        unique.set(key, { food: item.name, warning });
-      }
-    }
-    return [...unique.values()];
-  }, [forecast]);
-
+export default function ForecastResult({
+  forecast,
+  foods = [],
+  showActions = true,
+}) {
   const methods = useMemo(
-    () => [...new Set((forecast?.items ?? []).map((item) => item.prediction_method).filter(Boolean))],
+    () => [
+      ...new Set(
+        (forecast?.items ?? [])
+          .map((item) => item.prediction_method)
+          .filter(Boolean),
+      ),
+    ],
     [forecast],
   );
 
@@ -83,10 +79,11 @@ export default function ForecastResult({ forecast, foods = [], showActions = tru
   const dinerDistribution = useMemo(() => {
     if (forecast?.menu_mode !== "CHOICE_BASED") return [];
     return (forecast?.items ?? [])
-      .filter((item) =>
-        (item.food_role === "MAIN_DISH" || item.food_role == null) &&
-        item.estimated_diners != null &&
-        Number.isFinite(Number(item.estimated_diners)),
+      .filter(
+        (item) =>
+          (item.food_role === "MAIN_DISH" || item.food_role == null) &&
+          item.estimated_diners != null &&
+          Number.isFinite(Number(item.estimated_diners)),
       )
       .map((item, index) => ({
         food_item_id: item.food_item_id,
@@ -100,7 +97,9 @@ export default function ForecastResult({ forecast, foods = [], showActions = tru
   if (!forecast) return null;
 
   const items = forecast.items ?? [];
-  const chartData = dinerDistribution.filter((item) => item.estimated_diners > 0);
+  const chartData = dinerDistribution.filter(
+    (item) => item.estimated_diners > 0,
+  );
 
   return (
     <div className="k-forecast-result print-area">
@@ -109,7 +108,8 @@ export default function ForecastResult({ forecast, foods = [], showActions = tru
           <p className="k-eyebrow">FORECAST OVERVIEW</p>
           <h2>Forecast #{forecast.id}</h2>
           <p>
-            {mealTypeLabel(forecast.meal_type)} · {formatDate(forecast.meal_date)} ·{" "}
+            {mealTypeLabel(forecast.meal_type)} ·{" "}
+            {formatDate(forecast.meal_date)} ·{" "}
             {menuModeLabel(forecast.menu_mode)}
           </p>
           {showActions ? (
@@ -120,10 +120,18 @@ export default function ForecastResult({ forecast, foods = [], showActions = tru
               >
                 Record meal feedback
               </Button>
-              <Button variant="secondary" icon={Printer} onClick={() => window.print()}>
+              <Button
+                variant="secondary"
+                icon={Printer}
+                onClick={() => window.print()}
+              >
                 Print forecast
               </Button>
-              <Button variant="secondary" to="/kitchen/forecasts" icon={History}>
+              <Button
+                variant="secondary"
+                to="/kitchen/forecasts"
+                icon={History}
+              >
                 Forecast history
               </Button>
             </div>
@@ -161,10 +169,11 @@ export default function ForecastResult({ forecast, foods = [], showActions = tru
         <section className="k-card k-diner-distribution">
           <div className="k-card-header">
             <div className="k-card-heading">
-              <span className="k-card-icon" aria-hidden="true"><Users size={18} /></span>
+              <span className="k-card-icon" aria-hidden="true">
+                <Users size={18} />
+              </span>
               <div>
                 <h2>Expected diner distribution</h2>
-                <p>Backend estimates for choice-based main dishes.</p>
               </div>
             </div>
           </div>
@@ -198,7 +207,8 @@ export default function ForecastResult({ forecast, foods = [], showActions = tru
                     </ResponsiveContainer>
                   ) : (
                     <p className="k-muted-text">
-                      No positive estimated-diner values were returned for the chart.
+                      No positive estimated-diner values were returned for the
+                      chart.
                     </p>
                   )}
                 </div>
@@ -213,8 +223,9 @@ export default function ForecastResult({ forecast, foods = [], showActions = tru
                       <span className="k-diner-legend-text">
                         <strong>{dish.name}</strong>
                         <small>
-                          {formatNumber(dish.estimated_diners, 0)} estimated diners · preference
-                          share {dish.preference_share == null
+                          {formatNumber(dish.estimated_diners, 0)} estimated
+                          diners · preference share{" "}
+                          {dish.preference_share == null
                             ? "not returned"
                             : percent(Number(dish.preference_share) * 100)}
                         </small>
@@ -224,22 +235,6 @@ export default function ForecastResult({ forecast, foods = [], showActions = tru
                 </ul>
               </div>
             )}
-          </div>
-        </section>
-      ) : null}
-
-      {warnings.length > 0 ? (
-        <section className="k-callout k-callout-warning">
-          <AlertTriangle size={18} aria-hidden="true" />
-          <div>
-            <h3>Backend warnings</h3>
-            <ul>
-              {warnings.map((item) => (
-                <li key={`${item.food}-${item.warning}`}>
-                  <strong>{item.food}:</strong> {item.warning}
-                </li>
-              ))}
-            </ul>
           </div>
         </section>
       ) : null}
@@ -263,13 +258,20 @@ export default function ForecastResult({ forecast, foods = [], showActions = tru
                     <RoleBadge role={item.food_role} />
                     <MethodBadge method={item.prediction_method} />
                     {item.recommended_servings === 0 ? (
-                      <Badge tone="danger" icon={AlertTriangle}>No preparation recommended</Badge>
+                      <Badge tone="danger" icon={AlertTriangle}>
+                        No preparation recommended
+                      </Badge>
                     ) : null}
                   </div>
                 </div>
                 <div className="k-forecast-prep">
                   <span>Recommended preparation</span>
-                  <strong>{formatQuantity(item.recommended_servings, item.serving_unit)}</strong>
+                  <strong>
+                    {formatQuantity(
+                      item.recommended_servings,
+                      item.serving_unit,
+                    )}
+                  </strong>
                 </div>
               </header>
 
@@ -280,39 +282,33 @@ export default function ForecastResult({ forecast, foods = [], showActions = tru
                 </div>
                 <div>
                   <dt>Predicted servings</dt>
-                  <dd>{formatQuantity(item.predicted_servings, item.serving_unit, { approximate: true })}</dd>
-                </div>
-                <div>
-                  <dt>Preference share</dt>
                   <dd>
-                    {item.preference_share == null
-                      ? "—"
-                      : percent(Number(item.preference_share) * 100)}
+                    {formatQuantity(
+                      item.predicted_servings,
+                      item.serving_unit,
+                      { approximate: true },
+                    )}
                   </dd>
                 </div>
+
                 <div>
                   <dt>Historical observations</dt>
-                  <dd>{item.historical_observation_count ?? "Not available"}</dd>
+                  <dd>
+                    {item.historical_observation_count ?? "Not available"}
+                  </dd>
                 </div>
                 <div>
                   <dt>Serving unit</dt>
                   <dd>{unitLabel(item.serving_unit)}</dd>
-                </div>
-                <div>
-                  <dt>Allocation method</dt>
-                  <dd>{labelFor(item.allocation_method, "Not returned")}</dd>
-                </div>
-                <div>
-                  <dt>Model version</dt>
-                  <dd className="k-mono">{item.model_version ?? "—"}</dd>
                 </div>
               </dl>
 
               {item.preference_share != null ? (
                 <p className="k-note">
                   <Info size={14} aria-hidden="true" />
-                  Allocation share is the portion of expected diners assigned to this dish. It is
-                  not a probability that someone will choose it.
+                  Allocation share is the portion of expected diners assigned to
+                  this dish. It is not a probability that someone will choose
+                  it.
                 </p>
               ) : null}
 
@@ -320,10 +316,11 @@ export default function ForecastResult({ forecast, foods = [], showActions = tru
               item.compatible_main_food_item_ids != null ? (
                 <p className="k-note">
                   <Info size={14} aria-hidden="true" />
-                  Compatible main dishes: {item.compatible_main_food_item_ids.length > 0
+                  Compatible main dishes:{" "}
+                  {item.compatible_main_food_item_ids.length > 0
                     ? item.compatible_main_food_item_ids
-                      .map((id) => foodNames.get(id) ?? `#${id}`)
-                      .join(", ")
+                        .map((id) => foodNames.get(id) ?? `#${id}`)
+                        .join(", ")
                     : "none returned"}
                 </p>
               ) : null}
@@ -347,7 +344,9 @@ export default function ForecastResult({ forecast, foods = [], showActions = tru
                         {item.ingredients.map((ingredient, index) => (
                           <tr key={`${ingredient.name}-${index}`}>
                             <td data-label="Ingredient">{ingredient.name}</td>
-                            <td data-label="Quantity">{formatNumber(ingredient.quantity)}</td>
+                            <td data-label="Quantity">
+                              {formatNumber(ingredient.quantity)}
+                            </td>
                             <td data-label="Unit">{ingredient.unit}</td>
                           </tr>
                         ))}
@@ -355,7 +354,9 @@ export default function ForecastResult({ forecast, foods = [], showActions = tru
                     </table>
                   </div>
                 ) : (
-                  <p className="k-muted-text">No ingredient data was returned for this dish.</p>
+                  <p className="k-muted-text">
+                    No ingredient data was returned for this dish.
+                  </p>
                 )}
               </details>
             </article>
@@ -363,71 +364,33 @@ export default function ForecastResult({ forecast, foods = [], showActions = tru
         </div>
       )}
 
-      <section className="k-card">
-        <div className="k-card-header">
-          <div className="k-card-heading">
-            <span className="k-card-icon" aria-hidden="true"><Info size={18} /></span>
-            <div>
-              <h2>Consolidated ingredient list</h2>
-              <p>Combined across every dish in this forecast.</p>
-            </div>
-          </div>
-        </div>
-        <div className="k-card-body">
-          {consolidated.length > 0 ? (
-            <>
-              <div className="k-table-wrap">
-                <table className="k-table k-table-compact">
-                  <thead>
-                    <tr>
-                      <th>Ingredient</th>
-                      <th>Total quantity</th>
-                      <th>Unit</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {consolidated.map((ingredient) => (
-                      <tr key={`${ingredient.name}-${ingredient.dimension}-${ingredient.unit}`}>
-                        <td data-label="Ingredient">{ingredient.name}</td>
-                        <td data-label="Total quantity">{formatNumber(ingredient.quantity, 3)}</td>
-                        <td data-label="Unit">{ingredient.unit}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p className="k-note">
-                <Info size={14} aria-hidden="true" />
-                Compatible units are combined only within the same measurement type (g/kg or
-                ml/l). Weight, volume, and piece counts are never mixed.
-              </p>
-            </>
-          ) : (
-            <p className="k-muted-text">No ingredient requirements were returned for these dishes.</p>
-          )}
-        </div>
-      </section>
-
       <section className="k-method-legend k-card">
         <div className="k-card-header">
           <div className="k-card-heading">
-            <span className="k-card-icon" aria-hidden="true"><Info size={18} /></span>
+            <span className="k-card-icon" aria-hidden="true">
+              <Info size={18} />
+            </span>
             <div>
               <h2>Prediction explanation</h2>
-              <p>Methods, allocation details and warnings returned by the backend.</p>
+              <p>Methods and allocation details returned by the backend.</p>
             </div>
           </div>
         </div>
         <div className="k-card-body k-prediction-explanation">
           <div className="k-model-version">
             <span>Forecast model version</span>
-            <strong className="k-mono">{forecast.model_version ?? "Not returned"}</strong>
+            <strong className="k-mono">
+              {forecast.model_version ?? "Not returned"}
+            </strong>
           </div>
           <div className="k-method-grid">
             {methods.map((method) => (
               <div className="k-method-note" key={method}>
                 <MethodBadge method={method} />
-                <p>{METHOD_NOTES[method] ?? "Prediction method returned by the backend."}</p>
+                <p>
+                  {METHOD_NOTES[method] ??
+                    "Prediction method returned by the backend."}
+                </p>
               </div>
             ))}
           </div>
@@ -449,23 +412,24 @@ export default function ForecastResult({ forecast, foods = [], showActions = tru
                     <td data-label="Prediction method">
                       <MethodBadge method={item.prediction_method} />
                     </td>
-                    <td data-label="Allocation method">{labelFor(item.allocation_method, "Not returned")}</td>
+                    <td data-label="Allocation method">
+                      {labelFor(item.allocation_method, "Not returned")}
+                    </td>
                     <td data-label="Historical observations">
                       {item.historical_observation_count ?? "Not available"}
                     </td>
-                    <td data-label="Model version">{item.model_version ?? "—"}</td>
+                    <td data-label="Model version">
+                      {item.model_version ?? "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {warnings.length === 0 ? (
-            <p className="k-muted-text">No backend warnings were returned for this forecast.</p>
-          ) : null}
           <p className="k-note">
             <Info size={14} aria-hidden="true" />
-            Forecast quantities are planning estimates. Review them with your kitchen team before
-            preparation.
+            Forecast quantities are planning estimates. Review them with your
+            kitchen team before preparation.
           </p>
         </div>
       </section>
