@@ -7,6 +7,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_kitchen
 from app.models.meal_record import MealRecord
 from app.models.organization import Kitchen
+from app.schemas.meal_waste import MealWasteSummary, SurplusDrafts
 from app.schemas.meal_record import MealRecordPatch, MealRecordRequest, MealRecordResponse
 from app.services.meal_waste import meal_waste_summary, surplus_drafts
 from app.services.meal_records import meal_response, owned_meal, patch_meal, save_meal
@@ -45,13 +46,13 @@ def meal_detail(record_id: int, kitchen: Kitchen = Depends(get_current_kitchen),
     return meal_response(db, owned_meal(db, kitchen.id, record_id))
 
 
-@router.get("/{record_id}/surplus-drafts")
+@router.get("/{record_id}/surplus-drafts", response_model=SurplusDrafts)
 def draft_surplus(record_id: int, kitchen: Kitchen = Depends(get_current_kitchen),
                   db: Session = Depends(get_db)):
     return surplus_drafts(db, owned_meal(db, kitchen.id, record_id), kitchen)
 
 
-@router.get("/{record_id}/waste-summary")
+@router.get("/{record_id}/waste-summary", response_model=MealWasteSummary)
 def waste_summary(record_id: int, kitchen: Kitchen = Depends(get_current_kitchen),
                   db: Session = Depends(get_db)):
     return meal_waste_summary(db, owned_meal(db, kitchen.id, record_id))
