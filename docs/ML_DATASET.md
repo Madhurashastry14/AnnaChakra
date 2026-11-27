@@ -14,3 +14,9 @@ The workbook has 1,000 rows and 16 columns, covering five restaurant IDs and 12 
 | Waste_Amount_kg | 0 | 8.375 | 34.06 |
 
 The waste column label specifies kilograms. Units for prepared, sold, and remaining quantities are undocumented. The workbook contains restaurant sales and current customer counts. It cannot establish institutional serving rates or forecast performance for a registered kitchen.
+
+## Synthetic institutional records
+
+Run `python -m ml.forecasting.generate_dataset` from the repository root. The fixed-seed simulation generates 180 days of menus and quantities for eight demo kitchens and labels each row as synthetic. It writes a local CSV under the ignored forecasting datasets directory.
+
+Served quantity equals prepared quantity minus unserved leftovers. For supervised training, exclude shortages and zero-attendance meals. Evaluation on synthetic data demonstrates pipeline functionality. Real-world forecasting accuracy requires representative, compatible records from actual institutional kitchens.
