@@ -14,7 +14,10 @@ function SessionLoader() {
   );
 }
 
-function AccessDenied() {
+function AccessDenied({ roles }) {
+  const allowedWorkspace = roles?.length === 1
+    ? roles[0] === "ADMIN" ? "administrators" : roles[0] === "NGO_MANAGER" ? "NGO managers" : "kitchen staff"
+    : "authorized users";
   return (
     <main className="k-session-page">
       <div className="k-session-card k-session-card-wide">
@@ -22,9 +25,9 @@ function AccessDenied() {
           <ShieldAlert size={24} />
         </span>
         <p className="k-eyebrow">ACCESS RESTRICTED</p>
-        <h1>This workspace is for kitchen staff.</h1>
+        <h1>This workspace is for {allowedWorkspace}.</h1>
         <p className="k-muted-text">
-          Your account does not have access to the kitchen workspace. If you believe this is a
+          Your account does not have access to this workspace. If you believe this is a
           mistake, contact your AnnaChakra administrator.
         </p>
         <Link className="k-btn k-btn-secondary" to="/">
@@ -49,7 +52,7 @@ export default function ProtectedRoute({ roles, children }) {
       />
     );
   }
-  if (roles && !roles.includes(user.role)) return <AccessDenied />;
+  if (roles && !roles.includes(user.role)) return <AccessDenied roles={roles} />;
 
   return children;
 }

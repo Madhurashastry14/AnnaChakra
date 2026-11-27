@@ -5,6 +5,7 @@ import {
   CookingPot,
   Leaf,
   LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import { VerificationBadge } from "../ui/Badge.jsx";
 import { KITCHEN_NAV_GROUPS, isNavActive } from "./navigation.js";
@@ -13,6 +14,12 @@ import { classNames, labelFor } from "../../utils/format.js";
 
 export default function Sidebar({
   kitchen,
+  organization = kitchen,
+  organizationLabel,
+  workspaceLabel = "Kitchen",
+  defaultPath = "/kitchen/dashboard",
+  groups = KITCHEN_NAV_GROUPS,
+  organizationIcon: OrganizationIcon = CookingPot,
   collapsed,
   mobileOpen,
   onToggleCollapse,
@@ -29,45 +36,47 @@ export default function Sidebar({
 
   return (
     <aside
-      id="kitchen-navigation"
+      id={`${workspaceLabel.toLowerCase()}-navigation`}
       className={classNames(
         "k-sidebar",
         collapsed && "is-collapsed",
         mobileOpen && "is-mobile-open",
       )}
-      aria-label="Kitchen navigation"
+      aria-label={`${workspaceLabel} navigation`}
     >
       <div className="k-sidebar-brand-row">
         <Link
           className="k-brand"
-          to="/kitchen/dashboard"
+          to={defaultPath}
           onClick={onCloseMobile}
-          aria-label="AnnaChakra kitchen dashboard"
+          aria-label={`AnnaChakra ${workspaceLabel.toLowerCase()} dashboard`}
         >
           <span className="k-brand-mark" aria-hidden="true">
             <Leaf size={20} />
           </span>
           <span className="k-brand-text">
             Anna<span>Chakra</span>
-            <small>Kitchen workspace</small>
+            <small>{workspaceLabel} workspace</small>
           </span>
         </Link>
       </div>
 
-      <div className="k-sidebar-kitchen">
-        <span className="k-sidebar-kitchen-icon" aria-hidden="true">
-          <CookingPot size={17} />
-        </span>
-        <div className="k-sidebar-kitchen-text">
-          <strong>{kitchen?.name ?? "Your kitchen"}</strong>
-          {kitchen ? (
-            <VerificationBadge status={kitchen.verification_status} />
-          ) : null}
+      {organization || organizationLabel ? (
+        <div className="k-sidebar-kitchen">
+          <span className="k-sidebar-kitchen-icon" aria-hidden="true">
+            {organization ? <OrganizationIcon size={17} /> : <ShieldCheck size={17} />}
+          </span>
+          <div className="k-sidebar-kitchen-text">
+            <strong>{organization?.name ?? organizationLabel}</strong>
+            {organization?.verification_status ? (
+              <VerificationBadge status={organization.verification_status} />
+            ) : null}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <nav className="k-sidebar-nav">
-        {KITCHEN_NAV_GROUPS.map((group) => (
+        {groups.map((group) => (
           <div className="k-nav-group" key={group.label}>
             <p className="k-nav-group-label">{group.label}</p>
             {group.items.map((item) => {

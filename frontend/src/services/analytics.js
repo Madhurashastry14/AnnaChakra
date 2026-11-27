@@ -44,3 +44,18 @@ export async function getPortionRecommendations(filters) {
   });
   return data;
 }
+
+export async function getRedistributionTrends(filters = {}) {
+  const { data } = await api.get("/api/v1/analytics/redistribution-trends", { params: filters });
+  return data;
+}
+
+export async function getDonationStatusSummary(filters = {}) {
+  const { data } = await api.get("/api/v1/analytics/donation-status-summary", { params: filters });
+  return data;
+}
+
+export async function getNGOImpact(filters = {}) {
+  const { data } = await api.get("/api/v1/analytics/ngo-impact", { params: filters });
+  return data;
+}
