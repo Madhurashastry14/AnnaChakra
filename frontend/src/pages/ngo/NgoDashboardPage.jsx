@@ -160,7 +160,7 @@ export default function NgoDashboardPage() {
                   <li key={delivery.id}>
                     <div>
                       <Link to={`/ngo/donations/${delivery.donation_id}`}><strong>Donation #{delivery.donation_id}</strong></Link>
-                      <small>{donation?.kitchen_name ?? "Kitchen"} · {delivery.delivery_person_name ?? "Delivery person not provided"} · {delivery.delivered_at ? formatDateTime(delivery.delivered_at) : delivery.dispatched_at ? formatDateTime(delivery.dispatched_at) : "Not dispatched"}</small>
+                      <small>{donation?.kitchen_name ?? "Kitchen"} · {delivery.delivered_at ? formatDateTime(delivery.delivered_at) : delivery.dispatched_at ? formatDateTime(delivery.dispatched_at) : "Not dispatched"}</small>
                     </div>
                     <Badge tone={statusTone(donation?.status)}>{labelFor(donation?.status)}</Badge>
                   </li>

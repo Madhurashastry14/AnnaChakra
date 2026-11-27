@@ -245,7 +245,6 @@ export default function NgoDonationDetailPage() {
             </ol>
             {delivery ? (
               <dl className="k-redistribution-facts">
-                <div><dt>Delivery person</dt><dd>{delivery.delivery_person_name || "Not provided"}</dd></div>
                 <div><dt>Instructions</dt><dd>{delivery.notes || "None provided"}</dd></div>
               </dl>
             ) : null}

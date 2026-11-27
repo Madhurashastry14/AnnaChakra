@@ -302,7 +302,6 @@ export default function DeliveryPage() {
                   {section.rows.map((donation) => {
                     const selectedPersonId = assignments[donation.id]?.personId ?? "";
                     const selectedPerson = driverById.get(Number(selectedPersonId));
-                    const assignedPerson = driverById.get(donation.delivery?.delivery_person_id);
                     const showFailureForm = deliveryAction.id === donation.id && deliveryAction.action === "report-failure";
                     return (
                       <article className="k-delivery-item" key={donation.id}>
@@ -316,10 +315,6 @@ export default function DeliveryPage() {
 
                         {donation.delivery ? (
                           <dl className="k-redistribution-facts">
-                            <div>
-                              <dt>Delivery person</dt>
-                              <dd>{donation.delivery.delivery_person_name || "No longer available"}{assignedPerson?.phone ? ` · ${assignedPerson.phone}` : ""}</dd>
-                            </div>
                             <div><dt>Assigned</dt><dd>{donation.delivery.assigned_at ? formatDateTime(donation.delivery.assigned_at) : "—"}</dd></div>
                             <div><dt>Dispatched</dt><dd>{donation.delivery.dispatched_at ? formatDateTime(donation.delivery.dispatched_at) : "—"}</dd></div>
                             <div><dt>Delivered</dt><dd>{donation.delivery.delivered_at ? formatDateTime(donation.delivery.delivered_at) : "—"}</dd></div>

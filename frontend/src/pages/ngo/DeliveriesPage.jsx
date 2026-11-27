@@ -75,7 +75,6 @@ export default function NgoDeliveriesPage() {
                       <Badge tone={donation?.failed_at ? "danger" : statusTone(delivery.status)}>{donation?.failed_at ? "Failed" : labelFor(delivery.status)}</Badge>
                     </div>
                     <dl className="k-redistribution-facts">
-                      <div><dt>Delivery person</dt><dd>{delivery.delivery_person_name || "Not provided"}</dd></div>
                       <div><dt>Assigned</dt><dd>{delivery.assigned_at ? formatDateTime(delivery.assigned_at) : "—"}</dd></div>
                       <div><dt>Dispatched</dt><dd>{delivery.dispatched_at ? formatDateTime(delivery.dispatched_at) : "—"}</dd></div>
                       <div><dt>Delivered</dt><dd>{delivery.delivered_at ? formatDateTime(delivery.delivered_at) : "—"}</dd></div>
