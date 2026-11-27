@@ -9,6 +9,8 @@ from app.models.enums import MealType, MenuMode
 from app.models.organization import Kitchen
 from app.schemas.analytics import WasteMetrics, WasteTrend
 from app.services.waste_insights import waste_insights
+from app.services.forecast_records import owned_forecast
+from app.services.portion_recommendations import portion_recommendations
 from app.services.waste_analytics import group_history, history_rows, metrics
 
 router = APIRouter(prefix="/api/v1/analytics", tags=["Kitchen Analytics"])
@@ -41,3 +43,11 @@ def trends(query: dict = Depends(filters), kitchen: Kitchen = Depends(get_curren
 def insights(query: dict = Depends(filters), kitchen: Kitchen = Depends(get_current_kitchen),
              db: Session = Depends(get_db)):
     return {"insights": waste_insights(history_rows(db, kitchen.id, **query))}
+
+
+@router.get("/portion-recommendations")
+def portions(forecast_id: int | None = Query(default=None, gt=0), query: dict = Depends(filters),
+             kitchen: Kitchen = Depends(get_current_kitchen), db: Session = Depends(get_db)):
+    forecast = owned_forecast(db, kitchen.id, forecast_id) if forecast_id else None
+    return {"forecast_id": forecast_id,
+            "recommendations": portion_recommendations(db, kitchen.id, query, forecast)}
