@@ -16,6 +16,8 @@ import {
   TrendingUp,
   Users,
   Utensils,
+  HandHeart,
+  Truck,
 } from "lucide-react";
 import {
   Bar,
@@ -32,6 +34,11 @@ import { listForecasts } from "../../services/forecasts.js";
 import { listMealRecords } from "../../services/mealRecords.js";
 import { listWasteLogs } from "../../services/wasteLogs.js";
 import { getWasteInsights, getWasteSummary } from "../../services/analytics.js";
+import {
+  getAvailableSurplus,
+  getRedistributionSummary,
+  listAllDonations,
+} from "../../services/redistribution.js";
 import { getErrorMessage } from "../../utils/errors.js";
 import {
   formatDate,
@@ -103,6 +110,9 @@ export default function KitchenDashboardPage() {
     waste: [],
     summary: [],
     insights: [],
+    availableSurplus: [],
+    donations: [],
+    redistributionSummary: null,
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(true);
@@ -119,17 +129,30 @@ export default function KitchenDashboardPage() {
         ["waste", listWasteLogs({ limit: 5 })],
         ["summary", getWasteSummary()],
         ["insights", getWasteInsights()],
+        ["availableSurplus", getAvailableSurplus()],
+        ["donations", listAllDonations()],
+        ["redistributionSummary", getRedistributionSummary()],
       ];
       const results = await Promise.allSettled(requests.map(([, request]) => request));
       if (!active) return;
 
-      const nextData = { forecasts: [], meals: [], waste: [], summary: [], insights: [] };
+      const nextData = {
+        forecasts: [],
+        meals: [],
+        waste: [],
+        summary: [],
+        insights: [],
+        availableSurplus: [],
+        donations: [],
+        redistributionSummary: null,
+      };
       const nextErrors = {};
 
       results.forEach((result, index) => {
         const key = requests[index][0];
         if (result.status === "fulfilled") {
           if (key === "insights") nextData.insights = result.value?.insights ?? [];
+          else if (key === "redistributionSummary") nextData.redistributionSummary = result.value;
           else nextData[key] = Array.isArray(result.value) ? result.value : [];
         } else {
           nextErrors[key] = getErrorMessage(result.reason);
@@ -186,6 +209,13 @@ export default function KitchenDashboardPage() {
     (total, row) => total + (row.records_analyzed ?? 0),
     0,
   );
+  const redistribution = data.redistributionSummary;
+  const availableRedistribution = sumByUnit(data.availableSurplus, "available_quantity");
+  const redistributed = sumByUnit(redistribution?.quantities, "received_quantity");
+  const pendingOffers = data.donations.filter((donation) => donation.status === "PENDING").length;
+  const activeDeliveryCount = data.donations.filter((donation) => (
+    donation.status === "ASSIGNED" || donation.status === "IN_TRANSIT"
+  )).length;
 
   const chartData = useMemo(() => aggregateByFood(summary), [summary]);
   const acceptanceData = useMemo(
@@ -207,6 +237,9 @@ export default function KitchenDashboardPage() {
       waste: "waste logs",
       summary: "waste analytics",
       insights: "waste insights",
+      availableSurplus: "available surplus",
+      donations: "donations",
+      redistributionSummary: "redistribution metrics",
     };
     return names[key] ?? key;
   });
@@ -397,6 +430,65 @@ export default function KitchenDashboardPage() {
           tone={kitchen.verification_status === "VERIFIED" ? "success" : "warning"}
         />
       </div>
+
+      <Card className="k-dashboard-redistribution">
+        <CardHeader
+          icon={HandHeart}
+          title="Redistribution"
+          subtitle="Live kitchen-scoped surplus, offers, delivery status and completed receipt quantities."
+          action={<Button size="sm" variant="ghost" to="/kitchen/donations">View donations <ArrowRight size={14} /></Button>}
+        />
+        <div className="k-card-body">
+          <div className="k-metric-grid">
+            <MetricCard
+              label="Available surplus"
+              value={!errors.availableSurplus ? (
+                <span className="k-metric-split">
+                  <span>{formatQuantity(availableRedistribution.serving, "serving")}</span>
+                  <small>{formatQuantity(availableRedistribution.piece, "piece")}</small>
+                </span>
+              ) : "Unavailable"}
+              hint={errors.availableSurplus || "Currently eligible and unreserved"}
+              icon={Utensils}
+            />
+            <MetricCard
+              label="Pending donation offers"
+              value={errors.donations ? "Unavailable" : formatNumber(pendingOffers)}
+              hint={errors.donations || "Awaiting an NGO response"}
+              icon={HandHeart}
+            />
+            <MetricCard
+              label="Active deliveries"
+              value={errors.donations ? "Unavailable" : formatNumber(activeDeliveryCount)}
+              hint={errors.donations || "Assigned or in transit"}
+              icon={Truck}
+            />
+            <MetricCard
+              label="Completed donations"
+              value={redistribution ? formatNumber(redistribution.completed_donations) : "Unavailable"}
+              hint={errors.redistributionSummary || "Receipt confirmed by an NGO"}
+              icon={ClipboardList}
+            />
+            <MetricCard
+              label="Food successfully redistributed"
+              value={redistribution ? (
+                <span className="k-metric-split">
+                  <span>{formatQuantity(redistributed.serving, "serving")}</span>
+                  <small>{formatQuantity(redistributed.piece, "piece")}</small>
+                </span>
+              ) : "Unavailable"}
+              hint={errors.redistributionSummary || "Recorded quantities kept separate by unit"}
+              icon={Leaf}
+            />
+            <MetricCard
+              label="NGOs served"
+              value={redistribution ? formatNumber(redistribution.ngos_served) : "Unavailable"}
+              hint={errors.redistributionSummary || "NGOs with a confirmed receipt"}
+              icon={Users}
+            />
+          </div>
+        </div>
+      </Card>
 
       <div className="k-chart-grid">
         <ChartContainer

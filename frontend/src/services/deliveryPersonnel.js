@@ -7,6 +7,17 @@ export async function listDeliveryPersonnel({ isActive, limit = 50, offset = 0 }
   return data;
 }
 
+export async function listAllDeliveryPersonnel({ isActive } = {}) {
+  const people = [];
+  let offset = 0;
+  while (true) {
+    const page = await listDeliveryPersonnel({ isActive, limit: 100, offset });
+    people.push(...page.items);
+    offset += page.items.length;
+    if (page.items.length === 0 || offset >= page.total) return people;
+  }
+}
+
 export async function getDeliveryPerson(personId) {
   const { data } = await api.get(`/api/v1/delivery-personnel/${personId}`);
   return data;

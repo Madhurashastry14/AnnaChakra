@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Edit3,
   Info,
@@ -12,11 +13,17 @@ import {
 import {
   createDeliveryPerson,
   deactivateDeliveryPerson,
+  listAllDeliveryPersonnel,
   listDeliveryPersonnel,
   updateDeliveryPerson,
 } from "../../services/deliveryPersonnel.js";
+import {
+  listAllDeliveries,
+  listAllDonations,
+  updateDonation,
+} from "../../services/redistribution.js";
 import { getErrorMessage } from "../../utils/errors.js";
-import { formatNumber } from "../../utils/format.js";
+import { formatDateTime, formatNumber, formatQuantity, labelFor } from "../../utils/format.js";
 import PageHeader from "../../components/ui/PageHeader.jsx";
 import Button from "../../components/ui/Button.jsx";
 import { Card, CardHeader } from "../../components/ui/Card.jsx";
@@ -24,7 +31,7 @@ import { Badge } from "../../components/ui/Badge.jsx";
 import DataTable from "../../components/ui/DataTable.jsx";
 import Pagination from "../../components/ui/Pagination.jsx";
 import { ConfirmDialog, Modal } from "../../components/ui/Modal.jsx";
-import { FormError, FormGrid, TextInput } from "../../components/ui/Form.jsx";
+import { FormError, FormGrid, SelectInput, TextareaInput, TextInput } from "../../components/ui/Form.jsx";
 import { EmptyState, ErrorState, LoadingSkeleton } from "../../components/ui/States.jsx";
 import SegmentedControl from "../../components/ui/SegmentedControl.jsx";
 import { useToast } from "../../components/feedback/ToastProvider.jsx";
@@ -65,6 +72,42 @@ export default function DeliveryPage() {
   const [confirmPerson, setConfirmPerson] = useState(null);
   const [deactivating, setDeactivating] = useState(false);
   const [reactivatingId, setReactivatingId] = useState(null);
+  const [deliveryDonations, setDeliveryDonations] = useState([]);
+  const [deliveryPeople, setDeliveryPeople] = useState([]);
+  const [deliveryLoading, setDeliveryLoading] = useState(true);
+  const [deliveryError, setDeliveryError] = useState("");
+  const [deliveryReloadKey, setDeliveryReloadKey] = useState(0);
+  const [assignments, setAssignments] = useState({});
+  const [deliveryAction, setDeliveryAction] = useState({ id: null, action: "", reason: "" });
+  const [deliveryActionError, setDeliveryActionError] = useState({});
+  const [deliverySavingId, setDeliverySavingId] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    setDeliveryLoading(true);
+    setDeliveryError("");
+    Promise.all([
+      listAllDonations(),
+      listAllDeliveries(),
+      listAllDeliveryPersonnel({ isActive: true }),
+      listAllDeliveryPersonnel({ isActive: false }),
+    ])
+      .then(([donations, deliveries, activePeople, inactivePeople]) => {
+        if (!active) return;
+        const deliveryDonationIds = new Set(deliveries.map((delivery) => delivery.donation_id));
+        setDeliveryDonations(donations.filter((donation) => (
+          donation.status === "ACCEPTED" || deliveryDonationIds.has(donation.id)
+        )));
+        setDeliveryPeople([...activePeople, ...inactivePeople]);
+      })
+      .catch((requestError) => {
+        if (active) setDeliveryError(getErrorMessage(requestError, "We couldn’t load delivery assignments."));
+      })
+      .finally(() => {
+        if (active) setDeliveryLoading(false);
+      });
+    return () => { active = false; };
+  }, [deliveryReloadKey, reloadKey]);
 
   useEffect(() => {
     let active = true;
@@ -174,16 +217,218 @@ export default function DeliveryPage() {
     }
   }
 
+  function updateAssignment(donationId, field, value) {
+    setAssignments((current) => ({
+      ...current,
+      [donationId]: { ...(current[donationId] ?? { personId: "", notes: "" }), [field]: value },
+    }));
+    setDeliveryActionError((current) => ({ ...current, [donationId]: "" }));
+  }
+
+  async function runDonationAction(donationId, action, payload) {
+    setDeliverySavingId(donationId);
+    setDeliveryActionError((current) => ({ ...current, [donationId]: "" }));
+    try {
+      await updateDonation(donationId, action, payload);
+      notify(action === "assign-delivery" ? "Delivery assignment confirmed." : "Delivery status updated.");
+      setDeliveryAction({ id: null, action: "", reason: "" });
+      setDeliveryReloadKey((key) => key + 1);
+    } catch (requestError) {
+      setDeliveryActionError((current) => ({
+        ...current,
+        [donationId]: getErrorMessage(requestError, "The backend could not update this delivery."),
+      }));
+    } finally {
+      setDeliverySavingId(null);
+    }
+  }
+
+  function assignDonation(donation) {
+    const form = assignments[donation.id] ?? {};
+    if (!form.personId) {
+      setDeliveryActionError((current) => ({ ...current, [donation.id]: "Select an active delivery person." }));
+      return;
+    }
+    runDonationAction(donation.id, "assign-delivery", {
+      delivery_person_id: Number(form.personId),
+      notes: form.notes.trim() || null,
+    });
+  }
+
+  function failDelivery(donation) {
+    if (deliveryAction.id !== donation.id || !deliveryAction.reason.trim()) {
+      setDeliveryAction({ id: donation.id, action: "report-failure", reason: "" });
+      setDeliveryActionError((current) => ({ ...current, [donation.id]: "Enter a reason for reporting this delivery failure." }));
+      return;
+    }
+    runDonationAction(donation.id, "report-failure", { reason: deliveryAction.reason.trim() });
+  }
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const activeDeliveryPeople = deliveryPeople.filter((person) => person.is_active);
+  const driverById = new Map(deliveryPeople.map((person) => [person.id, person]));
+  const deliverySections = [
+    { key: "ACCEPTED", title: "Accepted offers awaiting assignment", rows: deliveryDonations.filter((row) => row.status === "ACCEPTED") },
+    { key: "ASSIGNED", title: "Assigned deliveries", rows: deliveryDonations.filter((row) => row.status === "ASSIGNED") },
+    { key: "IN_TRANSIT", title: "In-transit deliveries", rows: deliveryDonations.filter((row) => row.status === "IN_TRANSIT") },
+    { key: "DELIVERED", title: "Delivered food", rows: deliveryDonations.filter((row) => row.status === "DELIVERED") },
+    { key: "COMPLETED", title: "Completed donations", rows: deliveryDonations.filter((row) => row.status === "COMPLETED") },
+    { key: "CANCELLED", title: "Failed or cancelled deliveries", rows: deliveryDonations.filter((row) => row.status === "CANCELLED" || row.failed_at) },
+  ];
 
   return (
     <>
       <PageHeader
         eyebrow="REDISTRIBUTION"
-        title="Delivery personnel"
-        description="Manage the people who can collect and deliver food for your kitchen. This build does not include delivery assignment endpoints."
+        title="Delivery management"
+        description="Assign kitchen delivery personnel, dispatch accepted donations and record delivery status."
         actions={<Button icon={Plus} onClick={openCreate}>Add person</Button>}
       />
+
+      <Card className="k-redistribution-section">
+        <CardHeader
+          icon={Truck}
+          title="Donation deliveries"
+          subtitle="Assignments and status timestamps are loaded from the kitchen-scoped donation and delivery APIs."
+          action={<Button variant="secondary" size="sm" onClick={() => setDeliveryReloadKey((key) => key + 1)}>Refresh</Button>}
+        />
+        <div className="k-card-body">
+          {deliveryLoading ? <LoadingSkeleton rows={4} /> : deliveryError ? (
+            <ErrorState message={deliveryError} onRetry={() => setDeliveryReloadKey((key) => key + 1)} />
+          ) : deliverySections.map((section) => (
+            <section className="k-delivery-section" key={section.key}>
+              <h3>{section.title}</h3>
+              {section.rows.length ? (
+                <div className="k-delivery-list">
+                  {section.rows.map((donation) => {
+                    const selectedPersonId = assignments[donation.id]?.personId ?? "";
+                    const selectedPerson = driverById.get(Number(selectedPersonId));
+                    const assignedPerson = driverById.get(donation.delivery?.delivery_person_id);
+                    const showFailureForm = deliveryAction.id === donation.id && deliveryAction.action === "report-failure";
+                    return (
+                      <article className="k-delivery-item" key={donation.id}>
+                        <div className="k-redistribution-batch-heading">
+                          <div>
+                            <h4><Link to={`/kitchen/donations/${donation.id}`}>Donation #{donation.id}</Link> · {donation.ngo_name}</h4>
+                            <p>{donation.items?.map((item) => `${item.food_name} (${formatQuantity(item.offered_servings, item.serving_unit)})`).join(" · ")}</p>
+                          </div>
+                          <Badge tone={donation.status === "COMPLETED" || donation.status === "DELIVERED" ? "success" : donation.status === "CANCELLED" ? "danger" : "info"}>{labelFor(donation.status)}</Badge>
+                        </div>
+
+                        {donation.delivery ? (
+                          <dl className="k-redistribution-facts">
+                            <div>
+                              <dt>Delivery person</dt>
+                              <dd>{donation.delivery.delivery_person_name || "No longer available"}{assignedPerson?.phone ? ` · ${assignedPerson.phone}` : ""}</dd>
+                            </div>
+                            <div><dt>Assigned</dt><dd>{donation.delivery.assigned_at ? formatDateTime(donation.delivery.assigned_at) : "—"}</dd></div>
+                            <div><dt>Dispatched</dt><dd>{donation.delivery.dispatched_at ? formatDateTime(donation.delivery.dispatched_at) : "—"}</dd></div>
+                            <div><dt>Delivered</dt><dd>{donation.delivery.delivered_at ? formatDateTime(donation.delivery.delivered_at) : "—"}</dd></div>
+                          </dl>
+                        ) : null}
+                        {donation.delivery?.notes ? <p className="k-muted-text">Instructions: {donation.delivery.notes}</p> : null}
+
+                        {donation.status === "ACCEPTED" ? (
+                          <div className="k-delivery-assignment">
+                            {activeDeliveryPeople.length ? (
+                              <>
+                                <SelectInput
+                                  label="Active kitchen delivery person"
+                                  value={selectedPersonId}
+                                  onChange={(event) => updateAssignment(donation.id, "personId", event.target.value)}
+                                  placeholder="Select a delivery person"
+                                  options={activeDeliveryPeople.map((person) => ({ value: String(person.id), label: `${person.name} · ${person.phone}` }))}
+                                />
+                                {selectedPerson ? <p className="k-muted-text">Contact: {selectedPerson.name} · {selectedPerson.phone}</p> : null}
+                                <TextareaInput
+                                  label="Delivery instructions"
+                                  rows={2}
+                                  value={assignments[donation.id]?.notes ?? ""}
+                                  onChange={(event) => updateAssignment(donation.id, "notes", event.target.value)}
+                                  maxLength={1000}
+                                  hint="Optional, up to 1,000 characters."
+                                />
+                                <Button loading={deliverySavingId === donation.id} onClick={() => assignDonation(donation)}>Confirm assignment</Button>
+                              </>
+                            ) : <p className="k-muted-text">No active delivery personnel are available. Add or reactivate someone below.</p>}
+                          </div>
+                        ) : null}
+
+                        {donation.status === "ASSIGNED" ? (
+                          <>
+                            <div className="k-callout k-callout-info">
+                              <Info size={16} aria-hidden="true" />
+                              <div>
+                                <strong>Check current safety evidence before dispatch</strong>
+                                <p>If batch facts have changed, refresh the backend screening before dispatch. The dispatch API performs its own current checks.</p>
+                                <ul>{donation.items?.map((item) => <li key={item.id}><Link to={`/kitchen/waste-logs/${item.waste_log_id}`}>{item.food_name}: review safety evidence</Link></li>)}</ul>
+                              </div>
+                            </div>
+                            <Button loading={deliverySavingId === donation.id} onClick={() => runDonationAction(donation.id, "dispatch", null)}>Dispatch delivery</Button>
+                          </>
+                        ) : null}
+                        {donation.status === "IN_TRANSIT" ? (
+                          <div className="k-redistribution-card-actions">
+                            <Button loading={deliverySavingId === donation.id} onClick={() => runDonationAction(donation.id, "delivered", null)}>Mark delivered</Button>
+                            <Button
+                              variant="secondary"
+                              disabled={deliverySavingId === donation.id}
+                              onClick={() => {
+                                setDeliveryAction({ id: donation.id, action: "report-failure", reason: "" });
+                                setDeliveryActionError((current) => ({ ...current, [donation.id]: "" }));
+                              }}
+                            >
+                              Report delivery failure
+                            </Button>
+                          </div>
+                        ) : null}
+                        {showFailureForm ? (
+                          <div className="k-delivery-assignment">
+                            <TextareaInput
+                              label="Reason for delivery failure"
+                              value={deliveryAction.reason}
+                              onChange={(event) => {
+                                setDeliveryAction((current) => ({ ...current, reason: event.target.value }));
+                                setDeliveryActionError((current) => ({ ...current, [donation.id]: "" }));
+                              }}
+                              maxLength={1000}
+                              required
+                            />
+                            <Button variant="danger" loading={deliverySavingId === donation.id} onClick={() => failDelivery(donation)}>Confirm failure</Button>
+                          </div>
+                        ) : null}
+                        {donation.status === "DELIVERED" ? (
+                          <>
+                            <p className="k-callout k-callout-info">Delivery is recorded. NGO receipt confirmation is pending.</p>
+                            <Button
+                              variant="secondary"
+                              disabled={deliverySavingId === donation.id}
+                              onClick={() => {
+                                setDeliveryAction({ id: donation.id, action: "report-failure", reason: "" });
+                                setDeliveryActionError((current) => ({ ...current, [donation.id]: "" }));
+                              }}
+                            >
+                              Report delivery failure
+                            </Button>
+                          </>
+                        ) : null}
+                        {donation.status === "COMPLETED" ? <p className="k-callout k-callout-success">The NGO has confirmed receipt.</p> : null}
+                        {donation.failed_at || donation.status === "CANCELLED" ? (
+                          <p className="k-muted-text">{donation.failure_reason || donation.cancellation_reason || "Delivery cancelled"}{donation.failed_at ? ` · ${formatDateTime(donation.failed_at)}` : ""}</p>
+                        ) : null}
+                        {donation.is_simulated ? <span className="k-demo-label">Simulated demo transaction</span> : null}
+                        {deliveryActionError[donation.id] ? <p className="k-form-error" role="alert">{deliveryActionError[donation.id]}</p> : null}
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="k-muted-text">No records in this stage.</p>
+              )}
+            </section>
+          ))}
+        </div>
+      </Card>
 
       <Card>
         <div className="k-filter-bar">
@@ -310,21 +555,11 @@ export default function DeliveryPage() {
       <Card>
         <CardHeader
           icon={Truck}
-          title="Delivery assignments"
-          subtitle="The current backend exposes personnel management only."
+          title="Delivery personnel"
+          subtitle="Assignments are limited to active people managed by this kitchen."
         />
         <div className="k-card-body">
-          <div className="k-callout k-callout-warning">
-            <Info size={17} aria-hidden="true" />
-            <div>
-              <strong>Assignment tracking is not available in this build</strong>
-              <p>
-                There are no delivery-assignment or dispatch endpoints in the current API, so this
-                page does not invent assignments, statuses or ETAs. Personnel you add here are
-                stored by the backend and can be used when assignment support is added.
-              </p>
-            </div>
-          </div>
+          <p>Manage the people who may collect and deliver food for this kitchen. Their name and phone number are shown at assignment.</p>
         </div>
       </Card>
 
