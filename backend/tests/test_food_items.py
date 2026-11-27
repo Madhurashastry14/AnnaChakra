@@ -527,3 +527,21 @@ def test_seed_food_catalogue_is_idempotent_and_preserves_custom_recipes(
     assert saved_idli is not None
     assert saved_idli.category == "custom"
     assert saved_idli.default_servings_per_person == 4
+
+
+def test_admin_configures_menu_roles_and_compatibility(client):
+    headers = _admin_headers()
+    base = {"category": "menu", "serving_unit": "serving", "is_vegetarian": True,
+            "default_servings_per_person": 1}
+    route = "/api/v1/food-items"
+    main = client.post(route, headers=headers, json=base | {
+        "name": "Rice", "food_role": "MAIN_DISH",
+    }).json()
+    result = client.post(route, headers=headers, json=base | {
+        "name": "Sambar", "food_role": "ACCOMPANIMENT", "uptake_rate": 0.6,
+        "compatible_main_food_item_ids": [main["id"]],
+    })
+    assert result.status_code == 201, result.text
+    assert result.json()["compatible_main_food_item_ids"] == [main["id"]]
+    assert client.patch(f"{route}/{main['id']}", headers=headers,
+                        json={"food_role": "SIDE_DISH"}).status_code == 422

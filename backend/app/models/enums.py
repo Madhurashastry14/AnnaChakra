@@ -19,6 +19,19 @@ class MealType(str, Enum):
     DINNER = "DINNER"
 
 
+class FoodRole(str, Enum):
+    MAIN_DISH = "MAIN_DISH"
+    ACCOMPANIMENT = "ACCOMPANIMENT"
+    SIDE_DISH = "SIDE_DISH"
+    DESSERT = "DESSERT"
+    BEVERAGE = "BEVERAGE"
+
+
+class MenuMode(str, Enum):
+    CHOICE_BASED = "CHOICE_BASED"
+    FIXED_MEAL = "FIXED_MEAL"
+
+
 class ServingUnit(str, Enum):
     SERVING = "serving"
     PIECE = "piece"

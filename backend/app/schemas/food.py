@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import Enum
+from typing import Annotated
 
 from pydantic import (
     BaseModel,
@@ -9,7 +10,7 @@ from pydantic import (
     model_validator,
 )
 
-from app.models.enums import ServingUnit
+from app.models.enums import FoodRole, ServingUnit
 
 
 class IngredientUnit(str, Enum):
@@ -40,7 +41,23 @@ class RecipeIngredient(BaseModel):
         return value
 
 
-class FoodItemCreateRequest(BaseModel):
+class MenuFoodFields(BaseModel):
+    food_role: FoodRole | None = None
+    uptake_rate: Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)] = 0.75
+    preference_weight: Annotated[float, Field(gt=0, allow_inf_nan=False)] = 1
+    compatible_main_food_item_ids: list[Annotated[int, Field(strict=True, gt=0, le=2147483647)]] = Field(
+        default_factory=list,
+    )
+
+    @field_validator("compatible_main_food_item_ids")
+    @classmethod
+    def unique_compatible_ids(cls, ids):
+        if len(ids) != len(set(ids)):
+            raise ValueError("Compatible dish IDs must be unique")
+        return ids
+
+
+class FoodItemCreateRequest(MenuFoodFields):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(min_length=1, max_length=150)
@@ -76,7 +93,7 @@ class FoodItemCreateRequest(BaseModel):
         return ingredients
 
 
-class FoodItemUpdateRequest(BaseModel):
+class FoodItemUpdateRequest(MenuFoodFields):
     model_config = ConfigDict(extra="forbid")
 
     name: str | None = Field(default=None, min_length=1, max_length=150)
@@ -133,7 +150,7 @@ class FoodItemUpdateRequest(BaseModel):
         return self
 
 
-class FoodItemResponse(BaseModel):
+class FoodItemResponse(MenuFoodFields):
     model_config = ConfigDict(from_attributes=True)
 
     id: int

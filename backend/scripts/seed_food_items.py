@@ -12,10 +12,13 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from pydantic import ValidationError
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
+from app.models.food import FoodItem
+from ml.forecasting.menu_catalogue import ACCOMPANIMENTS, seed_role
 from app.schemas.food import FoodItemCreateRequest
 from app.services.food import (
     FoodItemAlreadyExistsError,
@@ -299,6 +302,20 @@ def seed_food_catalogue(
         else:
             inserted += 1
 
+    foods = {food.name: food for food in db.scalars(select(FoodItem))}
+    for definition in catalogue:
+        name = definition["name"]
+        food = foods.get(name)
+        role = seed_role(name)
+        if food is None or role is None or food.food_role is not None:
+            continue
+        food.food_role = role
+        if name in ACCOMPANIMENTS and not food.compatible_main_food_item_ids:
+            food.compatible_main_food_item_ids = [
+                foods[main].id for main in ACCOMPANIMENTS[name]
+                if main in foods and (foods[main].food_role or seed_role(main)) == "MAIN_DISH"
+            ]
+    db.commit()
     return inserted, skipped
 
 

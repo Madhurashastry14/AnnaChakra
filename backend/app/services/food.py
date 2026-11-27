@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.models.enums import ServingUnit
+from app.models.enums import FoodRole, ServingUnit
 from app.models.food import FoodItem
 from app.models.forecast import ForecastItem
 from app.models.meal_record import MealRecordItem
@@ -40,6 +40,10 @@ class HistoricalServingUnitChangeError(Exception):
     pass
 
 
+class MenuConfigurationError(ValueError):
+    pass
+
+
 class FoodItemPersistenceError(Exception):
     pass
 
@@ -62,11 +66,31 @@ def _find_food_item_by_name(
     return db.scalar(statement)
 
 
+def _validate_menu_configuration(db, fields, item=None):
+    role = fields.get("food_role", item.food_role if item else None)
+    ids = fields.get("compatible_main_food_item_ids", item.compatible_main_food_item_ids if item else [])
+    if item and item.food_role == FoodRole.MAIN_DISH and role != FoodRole.MAIN_DISH:
+        references = db.scalars(select(FoodItem.compatible_main_food_item_ids).where(
+            FoodItem.food_role == FoodRole.ACCOMPANIMENT,
+        ))
+        if any(item.id in targets for targets in references):
+            raise MenuConfigurationError("Remove accompaniment references before changing this main dish's role")
+    if ids:
+        if role != FoodRole.ACCOMPANIMENT or (item and item.id in ids):
+            raise MenuConfigurationError("Only accompaniments can reference other compatible main dishes")
+        matches = list(db.scalars(select(FoodItem.id).where(
+            FoodItem.id.in_(ids), FoodItem.food_role == FoodRole.MAIN_DISH,
+        )))
+        if len(matches) != len(ids):
+            raise MenuConfigurationError("Compatible food IDs must refer to existing main dishes")
+
+
 def create_food_item(db: Session, fields: FoodItemFields) -> FoodItem:
     name = str(fields["name"]).strip()
     try:
         if _find_food_item_by_name(db, name) is not None:
             raise FoodItemAlreadyExistsError
+        _validate_menu_configuration(db, fields)
     except SQLAlchemyError:
         db.rollback()
         raise FoodItemPersistenceError from None
@@ -180,6 +204,12 @@ def update_food_item(
             raise FoodItemPersistenceError from None
         if has_history:
             raise HistoricalServingUnitChangeError
+
+    try:
+        _validate_menu_configuration(db, fields, item)
+    except SQLAlchemyError:
+        db.rollback()
+        raise FoodItemPersistenceError from None
 
     for field, value in fields.items():
         setattr(item, field, value)

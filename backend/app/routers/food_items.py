@@ -16,6 +16,7 @@ from app.services.food import (
     FoodItemAlreadyExistsError,
     FoodItemPersistenceError,
     HistoricalServingUnitChangeError,
+    MenuConfigurationError,
     create_food_item,
     get_food_item,
     list_food_items,
@@ -78,6 +79,8 @@ def create_catalogue_item(
 ) -> FoodItemResponse:
     try:
         item = create_food_item(db, request.model_dump(mode="json"))
+    except MenuConfigurationError as exc:
+        raise HTTPException(422, str(exc)) from exc
     except FoodItemAlreadyExistsError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -107,6 +110,8 @@ def update_catalogue_item(
             food_item_id,
             request.model_dump(mode="json", exclude_unset=True),
         )
+    except MenuConfigurationError as exc:
+        raise HTTPException(422, str(exc)) from exc
     except FoodItemAlreadyExistsError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
