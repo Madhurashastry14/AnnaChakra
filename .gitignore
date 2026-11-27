@@ -39,3 +39,6 @@ backend/uploads/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Generated forecasting reports, plots, and models
+ml/artifacts/forecasting/
