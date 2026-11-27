@@ -142,7 +142,7 @@ export default function WasteLogsPage() {
       <PageHeader
         eyebrow="OPERATIONS"
         title="Waste logs"
-        description="Recorded surplus, plate waste and spoiled food. Safety status and remaining loggable quantities come from the backend."
+        description="Recorded surplus, plate waste and spoiled food. View redistribution availability and remaining loggable quantities."
         actions={
           <>
             <Button variant="secondary" to="/kitchen/scanner" icon={ImageOff}>
@@ -164,7 +164,7 @@ export default function WasteLogsPage() {
               options={WASTE_TYPES.map((value) => ({ value, label: wasteTypeLabel(value) }))}
             />
             {!kitchen?.is_simulated ? <SelectInput
-              label="Safety status"
+              label="Redistribution"
               value={filters.safety_status}
               onChange={(event) => setFilter("safety_status", event.target.value)}
               placeholder="All statuses"
@@ -283,7 +283,7 @@ export default function WasteLogsPage() {
                   title={hasFilters ? "No waste logs match these filters" : "No waste logs yet"}
                   description={
                     hasFilters
-                      ? "Try a different waste type, safety status, food or date range."
+                      ? "Try a different waste type, redistribution status, food or date range."
                       : "Log surplus or plate waste after a meal service, or start from a scanner result."
                   }
                   action={

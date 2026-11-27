@@ -121,7 +121,7 @@ export default function WasteLogDetailPage() {
         <dl className="k-result-hero-stats">
           {log.is_simulated ? <span className="k-demo-label">Demonstration data only. Not approved for actual consumption.</span> : (
           <div>
-            <dt>Safety status</dt>
+            <dt>Redistribution</dt>
             <dd><SafetyBadge status={log.safety_status} /></dd>
           </div>
           )}

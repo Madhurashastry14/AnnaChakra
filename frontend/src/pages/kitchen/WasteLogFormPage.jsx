@@ -250,7 +250,7 @@ export default function WasteLogFormPage() {
             <dl className="k-result-hero-stats">
               {result.is_simulated ? <span className="k-demo-label">Demonstration data only. Not approved for actual consumption.</span> : (
               <div>
-                <dt>Safety status</dt>
+                <dt>Redistribution</dt>
                 <dd><Badge tone={result.safety_status === "ELIGIBLE" ? "success" : result.safety_status === "INELIGIBLE" ? "danger" : "warning"}>{labelFor(result.safety_status)}</Badge></dd>
               </div>
               )}
