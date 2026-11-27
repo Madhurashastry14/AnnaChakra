@@ -3,7 +3,7 @@ from datetime import date, datetime
 from sqlalchemy import (
     Date, DateTime, Integer, Float, Boolean, JSON,
     ForeignKey, Enum, func, CheckConstraint,
-    UniqueConstraint
+    Index, UniqueConstraint
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -15,6 +15,7 @@ class MealRecord(Base):
     __tablename__ = "meal_records"
 
     __table_args__ = (
+        Index("ix_meal_records_kitchen_meal_date", "kitchen_id", "meal_date"),
         CheckConstraint(
             "actual_people >= 0",
             name="ck_meal_actual_people"

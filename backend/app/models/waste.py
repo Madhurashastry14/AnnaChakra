@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 
 from sqlalchemy import (
     String, Text, Float, Boolean, ForeignKey, JSON,
@@ -38,7 +38,8 @@ class WasteLog(Base):
 
     meal_record_item_id: Mapped[int | None] = mapped_column(
         ForeignKey("meal_record_items.id"),
-        nullable=True
+        nullable=True,
+        index=True
     )
 
     food_item_id: Mapped[int] = mapped_column(
