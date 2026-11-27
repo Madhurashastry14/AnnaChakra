@@ -284,3 +284,7 @@ See the [vision and waste setup guide](docs/VISION_WASTE.md) for local model art
 ## Waste intelligence and menu planning
 
 See the [waste intelligence guide](docs/WASTE_INTELLIGENCE.md) for visible-piece counting, meal-linked waste drafts, kitchen analytics, and recommendation workflows.
+
+## NGO redistribution backend
+
+See the [redistribution API, safety rules, and Swagger walkthrough](docs/REDISTRIBUTION.md) for requirements, matching, offers, delivery, receipt confirmation, and impact analytics.

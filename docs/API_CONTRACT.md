@@ -104,17 +104,21 @@ The check returns `waste_log_id`, `safety_status`, `safe_until`, `reasons`, `scr
 
 ## 7. NGO requirements (NGO UI)
 
+See the [implemented redistribution contract and Swagger workflow](REDISTRIBUTION.md) for unit-specific capacity, read/update/close, matching, donations, deliveries, and analytics.
+
 | Method | Path | Access |
 |---|---|---|
 | POST | /ngo-requirements | NGO |
 | GET | /ngo-requirements | NGO (own) |
+| GET | /ngo-requirements/{id} | NGO (own) |
 | PATCH | /ngo-requirements/{id} | NGO (own) |
+| DELETE | /ngo-requirements/{id} | NGO (own, soft close) |
 
 Create request:
 ```json
 {"people_to_feed":100,"capacity_servings":300,"accepts_vegetarian":true,"accepts_non_vegetarian":false,"required_date":"2026-11-27","available_until":"2026-11-27T08:00:00Z"}
 ```
-Response includes request fields plus id, ngo_id, remaining_capacity (initially capacity_servings), is_active, created_at. PATCH accepts editable requirements and is_active; cannot directly edit remaining_capacity or reduce capacity below reserved quantities. People to feed and total dish servings are different units; pieces are not automatically complete meals. Capacity uses catalogue-defined serving equivalents where known; otherwise matching requires manual confirmation, not automatic conversion.
+Response includes request fields plus id, ngo_id, remaining_capacity (the serving pool), remaining_capacity_by_unit, is_active, created_at and updated_at. PATCH accepts editable requirements and is_active; cannot directly edit remaining_capacity or reduce capacity below reserved quantities. People to feed and total dish servings are different units; pieces are not automatically complete meals. Capacity is recorded independently in servings and pieces. No cross-unit conversion is performed.
 
 ## 8. NGO matching (kitchen UI)
 
@@ -148,9 +152,9 @@ Response:
 | POST | /donations/{id}/assign | Kitchen | delivery_person_id; ACCEPTED → ASSIGNED |
 | POST | /donations/{id}/dispatch | Kitchen | empty; ASSIGNED → IN_TRANSIT |
 | POST | /donations/{id}/delivered | Kitchen | empty; IN_TRANSIT → DELIVERED |
-| POST | /donations/{id}/confirm | NGO | items: [{donation_item_id, received_servings}]; DELIVERED → COMPLETED |
+| POST | /donations/{id}/confirm | NGO | Inspection, item quantities, and applicable holding evidence; DELIVERED → COMPLETED |
 
-All actions return updated donation object. Validate transitions server-side, otherwise 409. Reserve surplus and NGO capacity atomically at creation; release on rejection/cancellation; expire stale pending offers before new allocations. Never double-allocate food. Received quantities nonnegative and <= offered, confirm every item. Completed donation consumes actual received capacity; release unused capacity, but do not automatically re-offer undelivered food without safety review. Recheck safety and availability before acceptance/dispatch. In-transit safety incident handling requires manual intervention; no automated claim of safe delivery.
+Donation actions return the updated donation. Invalid transitions return 409. Reservations expire or release as described in the implemented contract. After dispatch, food stays held even if receipt is partial or transport fails. Use the explicit failure action and enter a reason. Positive receipts require both current batch screening and inspection evidence.
 
 ## 10. Delivery personnel (kitchen UI)
 
@@ -165,14 +169,10 @@ Delivery object embedded in donation after assignment: `{"id":1,"delivery_person
 | GET | /admin/ngos | Admin |
 | PATCH | /admin/kitchens/{id}/verification | Admin |
 | PATCH | /admin/ngos/{id}/verification | Admin |
-| GET | /analytics/summary | All (role scoped) |
-| GET | /analytics/trends | All (role scoped) |
+| GET | /analytics/redistribution-summary | All (role scoped) |
+| GET | /analytics/redistribution-trends | All (role scoped) |
 
-Verification body `{"verification_status":"VERIFIED"}`; return organization. Analytics accept optional `date_from`, `date_to` inclusive. Summary example:
-```json
-{"completed_donations":3,"pending_donations":2,"quantities":[{"unit":"serving","prepared":500,"unserved_surplus":70,"redistributed":50},{"unit":"piece","prepared":200,"unserved_surplus":30,"redistributed":25}],"estimated_complete_meals":null}
-```
-Trends response `{"items":[{"date":"2026-11-27","unit":"serving","prepared":500,"unserved_surplus":70,"redistributed":50}]}`. NGO scope shows received quantities only; unavailable fields null. Admin aggregate, kitchen own data. Redistributed uses completed actual received amounts only. Do not sum pieces and servings or claim meals, kg, CO2 or savings without defensible conversion/baseline.
+Verification uses `{"verification_status":"VERIFIED"}` and returns the organization. Redistribution analytics group actual received quantities by food and unit. The implemented endpoints, date semantics, and response examples are in the [redistribution contract](REDISTRIBUTION.md).
 
 ## 12. Model management (P1)
 
