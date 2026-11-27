@@ -423,7 +423,7 @@ export default function KitchenDashboardPage() {
           value={<VerificationBadge status={kitchen.verification_status} />}
           hint={
             kitchen.verification_status === "VERIFIED"
-              ? "Redistribution still depends on food safety screening."
+              ? "Only available surplus can be matched with an NGO."
               : "Forecasting and analytics are available; redistribution is restricted."
           }
           icon={ShieldCheck}
@@ -663,7 +663,7 @@ export default function KitchenDashboardPage() {
                   render: (row) => formatQuantity(row.confirmed_servings, row.serving_unit),
                 },
                 { key: "type", label: "Type", render: (row) => wasteTypeLabel(row.waste_type) },
-                { key: "safety", label: "Safety", render: (row) => <SafetyBadge status={row.safety_status} /> },
+                { key: "redistribution", label: "Redistribution", render: (row) => row.is_simulated ? formatQuantity(row.available_servings, row.serving_unit) : <SafetyBadge status={row.safety_status} /> },
                 { key: "created", label: "Logged", render: (row) => formatDateTime(row.created_at) },
                 {
                   key: "action",

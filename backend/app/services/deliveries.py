@@ -99,7 +99,7 @@ def confirm_receipt(db, donation, request):
     kitchen, lines, now = recheck(db, donation, travel=False, selected_line_ids=positive)
     if set(submitted) != {line.id for line, _, _ in lines}:
         raise HTTPException(422, "Confirm every donation item exactly once")
-    policy = current_policy()
+    policy = None if donation.is_simulated else current_policy()
     for line, waste, food in lines:
         received = submitted[line.id]
         quantity = amount(received.received_servings)
@@ -108,7 +108,7 @@ def confirm_receipt(db, donation, request):
         if quantity < amount(line.offered_servings) and received.rejection_reason is None:
             raise HTTPException(422, "Give a reason for any quantity not received")
         evidence = received.evidence
-        if quantity > 0:
+        if quantity > 0 and not donation.is_simulated:
             if (evidence is None or evidence.temperature_measured_at is None
                     or not aware(delivery.delivered_at) <= evidence.temperature_measured_at <= now):
                 raise HTTPException(422, "Record a temperature measurement at receipt for each accepted batch")
@@ -123,7 +123,8 @@ def confirm_receipt(db, donation, request):
             if screened.status != SafetyStatus.ELIGIBLE:
                 raise HTTPException(409, f"Receipt evidence failed screening for waste log {waste.id}")
         line.received_servings = received.received_servings
-        line.receipt_evidence = {"inspected": True, "rejection_reason": received.rejection_reason,
+        line.receipt_evidence = {"inspected": True, "is_simulated": donation.is_simulated,
+                                 "rejection_reason": received.rejection_reason,
                                  "evidence": evidence.model_dump(mode="json") if evidence else None,
                                  "screened_at": now.isoformat(), "policy_version": policy.version if policy else None}
     donation.status = Status.COMPLETED

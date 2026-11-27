@@ -24,7 +24,7 @@ Responses include the same fields plus `id`, `ngo_id`, `created_at`, `updated_at
 
 Dates are interpreted in `REDISTRIBUTION_TIMEZONE` (default `Asia/Kolkata`). Only today's active requirement is matched. A future requirement is recorded and becomes matchable on its required date. An empty category list accepts all categories allowed by the dietary flags. Category names are trimmed and case-insensitive. Capacity reductions below reserved or received quantities return 409. Date or diet changes that could invalidate accepted allocations also return 409. `remaining_capacity`, IDs, and timestamps cannot be edited by clients.
 
-An available item includes `waste_log_id`, `food_item_id`, `food_name`, `serving_unit`, `is_vegetarian`, `confirmed_quantity`, `reserved_quantity`, `available_quantity`, `safety_status`, `safe_until`, `remaining_eligible_seconds`, `safety_policy_version`, and `is_simulated`. The service rechecks the current policy, verification, compatible environment, and batch holding evidence on every read.
+An available item includes `waste_log_id`, `food_item_id`, `food_name`, `serving_unit`, `is_vegetarian`, `confirmed_quantity`, `reserved_quantity`, `available_quantity`, `safety_status`, `safe_until`, `remaining_eligible_seconds`, `safety_policy_version`, and `is_simulated`. The service rechecks verification, environment and expiry on every read. Demo batches use the staff declaration saved with the waste log. Real batches require the current approved policy and holding evidence.
 
 Match request example:
 
@@ -74,7 +74,9 @@ Donation action results have the same shape. The full response adds addresses, n
 
 Offers reserve food and capacity atomically. Pending holds stop when their effective expiry is reached. The deadline is the earliest of `OFFER_EXPIRY_MINUTES` (30 by default), the NGO deadline minus handoff time, and the batch deadline minus handoff time. Expired offers read as CANCELLED with `expired: true`; no background expiry worker is needed. Rejection and pre-dispatch cancellation release both holds. After dispatch, a failure releases the NGO capacity but permanently holds the offered food from new redistribution. A completed record charges the NGO only for the quantity received and keeps the entire original amount out of available surplus. Repeating an action after its transition returns 409.
 
-Submit a receipt like the example below. Use the batch's actual history and a temperature measurement taken at or after the recorded delivery time. Quantities below the offer require a rejection reason. Send one inspected line for each offered batch.
+For simulated surplus, save the declaration through `POST /waste-logs` or `PATCH /waste-logs/{id}`. Include `waste_type: "UNSERVED_SURPLUS"`, a positive confirmed quantity, `unserved_confirmed: true`, `safe_handling_confirmed: true`, `contamination_suspected: false`, and a future `discard_at`. Simulation comes from the kitchen account. A confirmed batch is available immediately, subject to expiry and reservations. Simulated receipts require `inspected: true` and the quantities received. Demonstration data is not approved for actual consumption.
+
+For real redistribution, submit a receipt like the example below. Use the batch's actual history and a temperature measurement taken at or after the recorded delivery time. Quantities below the offer require a rejection reason. Send one inspected line for each offered batch.
 
 ```json
 {
@@ -118,13 +120,13 @@ All accept inclusive UTC `date_from` and `date_to`. Offer status aggregates filt
 ## Run and test in Swagger
 
 1. From `backend`, configure the existing database settings, then run `python -m alembic upgrade head`, `python -m alembic check`, and `python -m uvicorn app.main:app --reload`.
-2. For a simulated run, use a dedicated local PostgreSQL database named `annachakra_demo*`. Point `DATABASE_URL` at it and set `APP_ENV=demo` and `SAFETY_POLICY_PATH=config/safety_policy.demo.json` for both the seeder and server. Apply the migrations, then run `python -m scripts.seed_redistribution_demo`. Enter a password of at least 12 characters when prompted. Rerunning the same date or `--batch-key` preserves that batch and users. Choose a new key for fresh fixtures. The seeder refuses other databases and never updates existing accounts.
+2. For a simulated run, use a dedicated local PostgreSQL database named `annachakra_demo*`. Point `DATABASE_URL` at it and set `APP_ENV=demo` for both the seeder and server. Apply the migrations, then run `python -m scripts.seed_redistribution_demo`. Enter a password of at least 12 characters when prompted. Rerunning the same date or `--batch-key` preserves that batch and users. Choose a new key for fresh fixtures. The seeder refuses other databases and never updates existing accounts.
 3. Open `http://localhost:8000/docs`. Log in via `POST /api/v1/auth/login`, then paste the access token into **Authorize**. Seeded users are `redistribution-kitchen@example.com` and `redistribution-ngo@example.com`. Use separate browser sessions or switch tokens at each step.
 4. As the NGO, list or create a requirement for today. For the demo Biryani, supply serving capacity and allow the catalogue category. As the kitchen, list available surplus, pass a waste ID to matching, and submit an offer for an eligible candidate.
-5. Switch to the NGO and accept. As the kitchen, assign the seeded active driver, dispatch with current evidence, then mark delivered. As the NGO, confirm receipt with inspection and current evidence. For simulated receipts use the batch's posted preparation and simulated temperature history and record a test measurement at or after delivery.
+5. Switch to the NGO and accept. As the kitchen, assign the seeded active driver, dispatch, then mark delivered. As the NGO, verify the simulated delivery and confirm the quantities received.
 6. View the donation, delivery, summary and trend endpoints. Try reducing capacity below an accepted reservation or accepting twice to see 409 responses.
 
-The backend will refuse simulated policy use outside demo/test and will refuse real batches and organizations in demo mode. Production requires a separately approved, configured policy and valid evidence. There is no background cleanup queue or route/GPS integration.
+Simulated redistribution is available in demo and test environments. Real batches and organizations cannot participate in redistribution in demo mode. Production requires a separately approved, configured policy and valid evidence. There is no background cleanup queue or route/GPS integration.
 
 ### Automated hackathon smoke test
 
@@ -132,7 +134,6 @@ From `backend` in PowerShell, reuse the local PostgreSQL credentials from your e
 
 ```powershell
 $env:APP_ENV = 'demo'
-$env:SAFETY_POLICY_PATH = 'config/safety_policy.demo.json'
 $env:DATABASE_URL = python -c "from app.core.database import engine; print(engine.url.set(database='annachakra_demo_hackathon').render_as_string(hide_password=False))"
 python -m alembic upgrade head
 python -m scripts.seed_redistribution_demo --batch-key (Get-Date -Format yyyyMMdd-HHmmss)

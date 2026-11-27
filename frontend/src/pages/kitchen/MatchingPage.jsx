@@ -107,7 +107,7 @@ function MatchCard({ match, onChoose }) {
       <p className="k-note">
         Compatible foods are derived from the batches allocated by the backend. Estimated distance and travel time are not route information.
       </p>
-      {match.is_simulated ? <p className="k-demo-label">Simulated demo match</p> : null}
+      {match.is_simulated ? <p className="k-demo-label">Demonstration data only. Not approved for actual consumption.</p> : null}
       <div className="k-redistribution-card-actions">
         <Button
           icon={ArrowRight}
@@ -238,7 +238,7 @@ export default function MatchingPage() {
             <EmptyState
               icon={Search}
               title="No eligible surplus available"
-              description="Only unreserved batches that pass the current backend safety screening can be matched."
+              description="Select confirmed surplus with quantities available to offer."
               action={<Button variant="secondary" to="/kitchen/surplus">Review surplus</Button>}
             />
           )}

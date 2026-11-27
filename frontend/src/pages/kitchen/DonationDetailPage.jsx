@@ -102,7 +102,7 @@ export default function DonationDetailPage() {
         </div>
       ) : null}
       {donation.is_simulated ? (
-        <div className="k-callout k-callout-warning"><ShieldCheck size={18} aria-hidden="true" /><div><strong>Simulated demo transaction</strong><p>This offer belongs to the backend’s simulated demo environment.</p></div></div>
+        <div className="k-callout k-callout-warning"><ShieldCheck size={18} aria-hidden="true" /><div><strong>Demonstration data only. Not approved for actual consumption.</strong><p>This offer belongs to the backend’s simulated demo environment.</p></div></div>
       ) : null}
       <section className="k-result-hero k-donation-hero">
         <div className="k-result-hero-main">

@@ -19,8 +19,3 @@ export async function updateWasteLog(wasteLogId, payload) {
   const { data } = await api.patch(`/api/v1/waste-logs/${wasteLogId}`, payload);
   return data;
 }
-
-export async function checkWasteLogSafety(wasteLogId, payload = {}) {
-  const { data } = await api.post(`/api/v1/waste-logs/${wasteLogId}/safety-check`, payload);
-  return data;
-}

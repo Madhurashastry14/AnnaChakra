@@ -147,6 +147,7 @@ class OrganizationResponse(BaseModel):
     longitude: float
     phone: str
     verification_status: VerificationStatus
+    is_simulated: bool = False
     created_at: datetime
 
 

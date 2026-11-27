@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   ArrowRight,
   ClipboardList,
-  Info,
   RotateCcw,
   Save,
   ScanLine,
@@ -35,6 +34,7 @@ import Button from "../../components/ui/Button.jsx";
 import { Card, CardHeader } from "../../components/ui/Card.jsx";
 import { Badge } from "../../components/ui/Badge.jsx";
 import {
+  CheckboxField,
   FormError,
   FormGrid,
   SelectInput,
@@ -42,9 +42,9 @@ import {
   TextInput,
 } from "../../components/ui/Form.jsx";
 import { EmptyState, ErrorState, LoadingSkeleton } from "../../components/ui/States.jsx";
-import SafetyFields from "../../components/kitchen/SafetyFields.jsx";
 import { FoodSelect } from "../../components/kitchen/FoodSelectors.jsx";
 import SafetyScreeningPanel from "../../components/ui/SafetyScreeningPanel.jsx";
+import { useKitchen } from "../../components/kitchen/KitchenLayout.jsx";
 import { useToast } from "../../components/feedback/ToastProvider.jsx";
 
 function initialFormFromState(state) {
@@ -81,6 +81,7 @@ export default function WasteLogFormPage() {
   const navigate = useNavigate();
   const { notify } = useToast();
   const editing = Boolean(id);
+  const { kitchen } = useKitchen();
   const resultRef = useRef(null);
 
   const [foods, setFoods] = useState(null);
@@ -98,6 +99,7 @@ export default function WasteLogFormPage() {
   const [result, setResult] = useState(null);
 
   const prefill = location.state;
+  const simulated = existingLog?.is_simulated ?? kitchen?.is_simulated;
 
   useEffect(() => {
     let active = true;
@@ -156,14 +158,14 @@ export default function WasteLogFormPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    const nextErrors = validateWasteForm(form, selectedFood);
+    const nextErrors = validateWasteForm(form, selectedFood, simulated);
     setErrors(nextErrors);
     setSubmitError("");
     if (Object.keys(nextErrors).length > 0) return;
 
     setSubmitting(true);
     try {
-      const payload = buildWastePayload(form, { includeCleared: editing });
+      const payload = buildWastePayload(form, { includeCleared: editing, simulated });
       if (editing) {
         const updated = await updateWasteLog(id, payload);
         notify("Waste log updated.");
@@ -247,10 +249,12 @@ export default function WasteLogFormPage() {
               </p>
             </div>
             <dl className="k-result-hero-stats">
+              {result.is_simulated ? <span className="k-demo-label">Demonstration data only. Not approved for actual consumption.</span> : (
               <div>
                 <dt>Safety status</dt>
                 <dd><Badge tone={result.safety_status === "ELIGIBLE" ? "success" : result.safety_status === "INELIGIBLE" ? "danger" : "warning"}>{labelFor(result.safety_status)}</Badge></dd>
               </div>
+              )}
               <div>
                 <dt>Available for redistribution</dt>
                 <dd>{formatQuantity(result.available_servings, result.serving_unit)}</dd>
@@ -262,7 +266,7 @@ export default function WasteLogFormPage() {
             </dl>
           </div>
 
-          <SafetyScreeningPanel
+          {!result.is_simulated ? <SafetyScreeningPanel
             status={result.safety_status}
             notes={result.safety_notes}
             screenedAt={result.screened_at}
@@ -270,9 +274,16 @@ export default function WasteLogFormPage() {
             safeUntil={result.safe_until}
             availableServings={result.available_servings}
             servingUnit={result.serving_unit}
-          />
+          /> : null}
+
+          {result.is_simulated && result.waste_type === "UNSERVED_SURPLUS" && result.safety_status === "INELIGIBLE" ? (
+            <ul className="k-muted-text">{result.safety_notes.map((note) => <li key={note}>{note}</li>)}</ul>
+          ) : null}
 
           <div className="k-result-actions">
+            {result.is_simulated && result.available_servings > 0 ? (
+              <Button to={`/kitchen/matching?waste_log_id=${result.id}`} iconRight={ArrowRight}>Find NGOs</Button>
+            ) : null}
             <Button to={`/kitchen/waste-logs/${result.id}`} icon={ArrowRight}>
               Open waste log
             </Button>
@@ -300,11 +311,7 @@ export default function WasteLogFormPage() {
       <PageHeader
         eyebrow="OPERATIONS"
         title={editing ? `Edit waste log #${id}` : "Log waste"}
-        description={
-          editing
-            ? "Update the recorded facts. The backend re-screens safety from the values you submit."
-            : "Record surplus, plate waste or spoiled food. Safety fields are optional; leave unknown facts blank."
-        }
+        description="Record unserved surplus, plate waste or spoiled food."
         backTo={editing ? `/kitchen/waste-logs/${id}` : "/kitchen/waste-logs"}
         backLabel={editing ? "Waste log detail" : "Waste logs"}
         actions={
@@ -322,8 +329,7 @@ export default function WasteLogFormPage() {
           <div>
             <strong>Prefilled from the scanner</strong>
             <p>
-              The image prediction and quantity are carried over. Confirm the food and quantity,
-              then record the safety facts you know.
+              The image prediction and quantity are carried over. Confirm the food and quantity before saving.
             </p>
           </div>
         </div>
@@ -343,19 +349,6 @@ export default function WasteLogFormPage() {
                 Return to meal record
               </Link>
             ) : null}
-          </div>
-        </div>
-      ) : null}
-
-      {editing && existingLog ? (
-        <div className="k-callout k-callout-info">
-          <Info size={17} aria-hidden="true" />
-          <div>
-            <strong>Current status: {labelFor(existingLog.safety_status)}</strong>
-            <p>
-              Clearing a safety field removes that evidence. The backend will re-screen the log
-              when you save.
-            </p>
           </div>
         </div>
       ) : null}
@@ -427,7 +420,7 @@ export default function WasteLogFormPage() {
           <CardHeader
             icon={ClipboardList}
             title="Notes"
-            subtitle="Optional context for your kitchen. Do not put safety assumptions here instead of recording the facts."
+            subtitle="Optional context for your kitchen."
           />
           <div className="k-card-body">
             <TextareaInput
@@ -442,16 +435,26 @@ export default function WasteLogFormPage() {
           </div>
         </Card>
 
-        <Card>
-          <div className="k-card-body">
-            <SafetyFields values={form} onChange={setField} idPrefix="waste" />
-            <p className="k-note">
-              <Info size={14} aria-hidden="true" />
-              Unknown values stay unknown. The interface never fills temperatures, times or
-              confirmations on your behalf.
-            </p>
-          </div>
-        </Card>
+        {simulated && form.waste_type === "UNSERVED_SURPLUS" ? (
+          <Card>
+            <CardHeader title="Staff declaration" subtitle="Demonstration data only. Not approved for actual consumption." />
+            <div className="k-card-body k-form">
+              <CheckboxField
+                label="I confirm this food was unserved, handled appropriately and has no known contamination."
+                checked={form.declared}
+                onChange={(event) => setField("declared", event.target.checked)}
+              />
+              <TextInput
+                label="Discard deadline"
+                type="datetime-local"
+                value={form.discard_at}
+                onChange={(event) => setField("discard_at", event.target.value)}
+                error={errors.discard_at}
+                required={form.declared}
+              />
+            </div>
+          </Card>
+        ) : null}
 
         <FormError message={submitError} />
 

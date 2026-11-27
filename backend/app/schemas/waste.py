@@ -64,6 +64,7 @@ class WasteResponse(WasteRequest):
     confidence_score: float | None
     model_version: str | None
     estimated_servings: float | None
+    is_simulated: bool
     safety_status: SafetyStatus
     safety_notes: list[str]
     safe_until: datetime | None

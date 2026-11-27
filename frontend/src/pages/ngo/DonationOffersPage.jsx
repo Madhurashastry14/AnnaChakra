@@ -105,10 +105,7 @@ export default function DonationOffersPage() {
                     ) : null}
                   </dl>
                   {donation.notes ? <p className="k-portal-notes"><strong>Kitchen notes:</strong> {donation.notes}</p> : null}
-                  {donation.is_simulated ? <span className="k-demo-label">Simulated demo transaction</span> : null}
-                  <p className="k-muted-text k-ngo-safety-note">
-                    Batch safety deadline is not included in the NGO donation response. Current safety checks remain backend-enforced.
-                  </p>
+                  {donation.is_simulated ? <span className="k-demo-label">Demonstration data only. Not approved for actual consumption.</span> : null}
                   <div className="k-redistribution-card-actions">
                     <Button size="sm" to={`/ngo/donations/${donation.id}`}>Review offer</Button>
                     {donation.expired ? <span className="k-muted-text">This offer has expired.</span> : null}

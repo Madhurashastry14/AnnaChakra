@@ -73,7 +73,9 @@ def read_surplus(db, kitchen, ids=None, *, now=None, lock=False, strict=False):
         query = query.where(WasteLog.id.in_(ids))
     else:
         query = query.where(WasteLog.waste_type == WasteType.UNSERVED_SURPLUS,
-                            WasteLog.safe_until > now, WasteLog.confirmed_servings > 0)
+                            WasteLog.confirmed_servings > 0)
+        if not kitchen.is_simulated:
+            query = query.where(WasteLog.safe_until > now)
     rows = db.execute(query.with_for_update(of=WasteLog) if lock else query).all()
     if ids is not None and len(rows) != len(ids):
         raise HTTPException(404, "Waste log not found")

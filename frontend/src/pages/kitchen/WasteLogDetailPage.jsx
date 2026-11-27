@@ -1,37 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
-  ClipboardList,
   Edit3,
   ImageOff,
-  Info,
-  RefreshCw,
-  ShieldCheck,
   Trash2,
 } from "lucide-react";
-import { checkWasteLogSafety, getWasteLog } from "../../services/wasteLogs.js";
+import { getWasteLog } from "../../services/wasteLogs.js";
 import { getErrorMessage, isNotFound } from "../../utils/errors.js";
 import {
   formatDateTime,
   formatNumber,
   formatQuantity,
-  labelFor,
   wasteTypeLabel,
 } from "../../utils/format.js";
-import {
-  buildSafetyCheckPayload,
-  wasteFormFromLog,
-} from "../../utils/waste.js";
 import PageHeader from "../../components/ui/PageHeader.jsx";
 import Button from "../../components/ui/Button.jsx";
 import { Card, CardHeader } from "../../components/ui/Card.jsx";
 import { SafetyBadge } from "../../components/ui/Badge.jsx";
-import { FormError } from "../../components/ui/Form.jsx";
 import { EmptyState, ErrorState, LoadingSkeleton } from "../../components/ui/States.jsx";
 import AuthenticatedImage from "../../components/ui/AuthenticatedImage.jsx";
 import SafetyScreeningPanel from "../../components/ui/SafetyScreeningPanel.jsx";
-import SafetyFields from "../../components/kitchen/SafetyFields.jsx";
-import { useToast } from "../../components/feedback/ToastProvider.jsx";
 
 function imageSource(log) {
   if (log.image_url) return log.image_url;
@@ -41,15 +29,11 @@ function imageSource(log) {
 
 export default function WasteLogDetailPage() {
   const { id } = useParams();
-  const { notify } = useToast();
   const [log, setLog] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notFound, setNotFound] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [safetyForm, setSafetyForm] = useState(null);
-  const [safetyError, setSafetyError] = useState("");
-  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -61,7 +45,6 @@ export default function WasteLogDetailPage() {
       .then((data) => {
         if (!active) return;
         setLog(data);
-        setSafetyForm(wasteFormFromLog(data));
       })
       .catch((requestError) => {
         if (!active) return;
@@ -76,31 +59,6 @@ export default function WasteLogDetailPage() {
       active = false;
     };
   }, [id, reloadKey]);
-
-  const safetyValues = useMemo(
-    () => safetyForm ?? wasteFormFromLog(log ?? {}),
-    [safetyForm, log],
-  );
-
-  function setSafetyField(field, value) {
-    setSafetyForm((current) => ({ ...(current ?? wasteFormFromLog(log ?? {})), [field]: value }));
-    setSafetyError("");
-  }
-
-  async function handleSafetyCheck(event) {
-    event.preventDefault();
-    setChecking(true);
-    setSafetyError("");
-    try {
-      const response = await checkWasteLogSafety(id, buildSafetyCheckPayload(safetyValues, { includeCleared: true }));
-      notify(`Safety screening returned ${labelFor(response.safety_status).toLowerCase()}.`);
-      setReloadKey((key) => key + 1);
-    } catch (requestError) {
-      setSafetyError(getErrorMessage(requestError, "We couldn’t run the safety screening."));
-    } finally {
-      setChecking(false);
-    }
-  }
 
   if (loading) {
     return (
@@ -162,10 +120,12 @@ export default function WasteLogDetailPage() {
           </p>
         </div>
         <dl className="k-result-hero-stats">
+          {log.is_simulated ? <span className="k-demo-label">Demonstration data only. Not approved for actual consumption.</span> : (
           <div>
             <dt>Safety status</dt>
             <dd><SafetyBadge status={log.safety_status} /></dd>
           </div>
+          )}
           <div>
             <dt>Available for redistribution</dt>
             <dd>{formatQuantity(log.available_servings, log.serving_unit)}</dd>
@@ -173,10 +133,6 @@ export default function WasteLogDetailPage() {
           <div>
             <dt>Redistribution deadline</dt>
             <dd>{log.safe_until ? formatDateTime(log.safe_until) : "Not set"}</dd>
-          </div>
-          <div>
-            <dt>Screened at</dt>
-            <dd>{log.screened_at ? formatDateTime(log.screened_at) : "Not screened"}</dd>
           </div>
         </dl>
       </section>
@@ -276,7 +232,7 @@ export default function WasteLogDetailPage() {
         </Card>
       </div>
 
-      <SafetyScreeningPanel
+      {!log.is_simulated ? <SafetyScreeningPanel
         status={log.safety_status}
         notes={log.safety_notes}
         screenedAt={log.screened_at}
@@ -284,43 +240,7 @@ export default function WasteLogDetailPage() {
         safeUntil={log.safe_until}
         availableServings={log.available_servings}
         servingUnit={log.serving_unit}
-      />
-
-      <Card>
-        <CardHeader
-          icon={ShieldCheck}
-          title="Re-check food safety"
-          subtitle="Update the recorded facts and ask the backend to screen eligibility again."
-        />
-        <form className="k-card-body k-form" onSubmit={handleSafetyCheck} noValidate>
-          <SafetyFields values={safetyValues} onChange={setSafetyField} idPrefix="recheck" />
-          <p className="k-note">
-            <Info size={14} aria-hidden="true" />
-            The status shown above stays authoritative. Re-screening does not guarantee food is
-            safe; it applies the kitchen’s configured safety policy to the evidence you provide.
-          </p>
-          <FormError message={safetyError} />
-          <div className="k-form-actions">
-            <Button type="submit" icon={RefreshCw} loading={checking}>
-              Run safety screening
-            </Button>
-            <Button variant="secondary" to={`/kitchen/waste-logs/${log.id}/edit`} icon={Edit3}>
-              Edit recorded facts
-            </Button>
-            <Button variant="ghost" to="/kitchen/meal-records" icon={ClipboardList}>
-              Meal records
-            </Button>
-          </div>
-        </form>
-      </Card>
-
-      <p className="k-page-footer-note">
-        <Info size={14} aria-hidden="true" />
-        <span>
-          Remaining loggable quantities and redistribution eligibility are calculated by the
-          backend. This page does not recalculate or override them.
-        </span>
-      </p>
+      /> : null}
     </>
   );
 }

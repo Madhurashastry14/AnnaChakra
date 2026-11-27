@@ -124,7 +124,7 @@ export default function DonationOfferPage() {
       <PageHeader
         eyebrow="REDISTRIBUTION"
         title="Confirm donation offer"
-        description="Review quantities before sending an offer. The backend checks live safety, capacity and availability again."
+        description="Review quantities before sending an offer. Quantities are checked against current surplus and NGO capacity."
         backTo={from}
         backLabel="Matching results"
       />
@@ -161,7 +161,7 @@ export default function DonationOfferPage() {
                       <dl className="k-redistribution-facts">
                         <div><dt>Currently available</dt><dd>{line.current ? formatQuantity(line.current.available_quantity, line.serving_unit) : "No longer eligible or available"}</dd></div>
                         <div><dt>Suggested for this NGO</dt><dd>{formatQuantity(line.offered_servings, line.serving_unit)}</dd></div>
-                        <div><dt>Safety deadline</dt><dd>{formatDateTime(line.current?.safe_until ?? line.safe_until)}</dd></div>
+                        <div><dt>Redistribution deadline</dt><dd>{formatDateTime(line.current?.safe_until ?? line.safe_until)}</dd></div>
                       </dl>
                       <TextInput
                         label={`Offered quantity (${line.serving_unit === "piece" ? "whole pieces" : "servings"})`}
@@ -174,7 +174,7 @@ export default function DonationOfferPage() {
                         disabled={!line.current}
                         required
                       />
-                      {line.current.is_simulated ? <p className="k-demo-label">Simulated demo batch</p> : null}
+                      {line.current.is_simulated ? <p className="k-demo-label">Demonstration data only. Not approved for actual consumption.</p> : null}
                     </section>
                   ))}
                 </div>

@@ -198,7 +198,7 @@ export default function NgoDonationDetailPage() {
     event.preventDefault();
     setActionError("");
     if (!inspected) {
-      setActionError("Confirm that you inspected the delivered food before submitting receipt.");
+      setActionError("Confirm that you verified the delivery before submitting receipt.");
       return;
     }
     const items = [];
@@ -221,7 +221,7 @@ export default function NgoDonationDetailPage() {
           donation_item_id: item.id,
           received_servings: received,
           rejection_reason: rejectionReason || null,
-          evidence: buildEvidence(line),
+          ...(donation.is_simulated ? {} : { evidence: buildEvidence(line) }),
         });
       }
     } catch (validationError) {
@@ -293,9 +293,9 @@ export default function NgoDonationDetailPage() {
               ))}
             </div>
             {donation.notes ? <p className="k-portal-notes"><strong>Kitchen notes:</strong> {donation.notes}</p> : null}
-            <p className="k-callout k-callout-warning k-ngo-safety-note">
+            {!donation.is_simulated ? <p className="k-callout k-callout-warning k-ngo-safety-note">
               Per-batch safety deadlines are not included in the NGO donation response. The backend rechecks current safety when accepting and confirming receipt.
-            </p>
+            </p> : null}
             {donation.rejection_reason ? <p className="k-portal-notes"><strong>Rejection reason:</strong> {donation.rejection_reason}</p> : null}
           </div>
         </Card>
@@ -342,15 +342,17 @@ export default function NgoDonationDetailPage() {
           <CardHeader
             icon={ShieldCheck}
             title="Inspect and confirm receipt"
-            subtitle="Enter recorded measurements only. Positive quantities require the complete holding evidence accepted by backend screening."
+            subtitle={donation.is_simulated
+              ? "Confirm the quantities received in this demonstration."
+              : "Record the holding evidence for each accepted batch."}
           />
           <div className="k-card-body">
-            <p className="k-note">
+            {!donation.is_simulated ? <p className="k-note">
               Obtain the batch’s actual preparation and temperature history from the kitchen. The donation API does not include those original records. Do not estimate measurements or confirm handling facts you cannot verify.
-            </p>
+            </p> : null}
             <form className="k-form" onSubmit={handleReceipt} noValidate>
               <CheckboxField
-                label="I inspected the delivered food"
+                label={donation.is_simulated ? "I verified the simulated delivery" : "I inspected the delivered food"}
                 description="This must be confirmed before a receipt can be submitted."
                 checked={inspected}
                 onChange={(event) => setInspected(event.target.checked)}
@@ -381,7 +383,7 @@ export default function NgoDonationDetailPage() {
                         hint="Required when received quantity is below the offer."
                       />
                     </FormGrid>
-                    {line.received !== "" && Number(line.received) > 0 ? (
+                    {!donation.is_simulated && line.received !== "" && Number(line.received) > 0 ? (
                       <div className="k-receipt-evidence">
                         <h4>Food safety evidence</h4>
                         <p>Record actual inspection observations and documented holding history for this batch.</p>

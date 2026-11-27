@@ -83,7 +83,7 @@ export default function DeliveryMonitoringPage() {
                   </dl>
                   {delivery.notes ? <p className="k-portal-notes"><strong>Instructions:</strong> {delivery.notes}</p> : null}
                   {donation.failure_reason ? <p className="k-callout k-callout-warning"><strong>Delivery failure:</strong> {donation.failure_reason}{donation.failed_at ? ` · ${formatDateTime(donation.failed_at)}` : ""}</p> : null}
-                  {donation.is_simulated ? <span className="k-demo-label">Simulated demo transaction</span> : null}
+                  {donation.is_simulated ? <span className="k-demo-label">Demonstration data only. Not approved for actual consumption.</span> : null}
                 </article>
               ))}
             </div>

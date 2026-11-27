@@ -33,6 +33,10 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
+    if settings.APP_ENV.strip().casefold() == "demo":
+        logger.info("Redistribution uses simulated staff declarations in the demo environment")
+        yield
+        return
     policy = current_policy()
     if policy is None:
         logger.warning(

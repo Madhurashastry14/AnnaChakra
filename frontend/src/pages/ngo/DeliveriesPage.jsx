@@ -84,7 +84,7 @@ export default function NgoDeliveriesPage() {
                     {delivery.notes ? <p className="k-portal-notes"><strong>Kitchen instructions:</strong> {delivery.notes}</p> : null}
                     {donation?.failure_reason ? <p className="k-callout k-callout-warning"><strong>Delivery failure:</strong> {donation.failure_reason}{donation.failed_at ? ` · ${formatDateTime(donation.failed_at)}` : ""}</p> : null}
                     {donation?.cancellation_reason && !donation?.failed_at ? <p className="k-callout k-callout-warning"><strong>Cancellation:</strong> {donation.cancellation_reason}</p> : null}
-                    {donation?.is_simulated ? <span className="k-demo-label">Simulated demo transaction</span> : null}
+                    {donation?.is_simulated ? <span className="k-demo-label">Demonstration data only. Not approved for actual consumption.</span> : null}
                     {donation?.status === "DELIVERED" ? (
                       <p className="k-callout k-callout-info">Food delivery is recorded. Confirm inspected receipt from the donation details page.</p>
                     ) : null}

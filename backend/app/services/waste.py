@@ -1,21 +1,22 @@
 from datetime import datetime, timezone
-from math import fsum, isclose
+from math import fsum, isclose, isfinite
 
 from fastapi import HTTPException
 from pydantic import ValidationError
 from sqlalchemy import select, text
 
 from app.models.donation import Donation, DonationItem
-from app.models.enums import SafetyStatus, ServingUnit, WasteType
+from app.models.enums import SafetyStatus, ServingUnit, VerificationStatus, WasteType
 from app.models.food import FoodItem
 from app.models.meal_record import MealRecord, MealRecordItem
 from app.models.waste import WasteLog
 from app.models.vision import VisionPrediction
 from app.schemas.waste import SafetyEvidence, WasteRequest, WasteResponse
-from app.services.safety import Screening, current_policy, policy_for_batch, screen_waste
+from app.services.safety import Screening, current_policy, environment_allows, policy_for_batch, screen_waste
 from app.services.vision import owned_prediction
 from app.services.reservations import food_holds
 
+SIMULATION_DECLARATION_VERSION = "simulation-declaration-v1"
 UNSERVED = {WasteType.UNSERVED_SURPLUS, WasteType.SPOILED_FOOD}
 
 
@@ -97,13 +98,45 @@ def response_values(row):
     }
 
 
+def screen_batch(row, food, kitchen, now=None):
+    if not row.is_simulated:
+        return screen_waste(row, food.name, getattr(kitchen, "verification_status", None),
+                            policy_for_batch(current_policy(), kitchen, row), now)
+    now = now or datetime.now(timezone.utc)
+    evidence = row.safety_evidence or {}
+    if "discard_at" in evidence:
+        deadline = utc(datetime.fromisoformat(evidence["discard_at"])) if evidence["discard_at"] else None
+    else:
+        # Existing simulated fixtures recorded their deadline in the screening columns.
+        deadline = utc(row.safe_until)
+    reasons = []
+    if not kitchen.is_simulated or not environment_allows(True):
+        reasons.append("This simulated batch is outside the demonstration environment.")
+    if kitchen.verification_status != VerificationStatus.VERIFIED:
+        reasons.append("The demonstration kitchen must be verified.")
+    if (row.waste_type != WasteType.UNSERVED_SURPLUS or not isfinite(row.confirmed_servings)
+            or row.confirmed_servings <= 0):
+        reasons.append("Only unserved surplus with a positive quantity can be offered.")
+    if (not row.safe_handling_confirmed or evidence.get("unserved_confirmed") is not True
+            or evidence.get("contamination_suspected") is not False):
+        reasons.append("Staff must confirm unserved food, appropriate handling and no known contamination.")
+    if deadline is None or now >= deadline:
+        reasons.append("A future discard deadline is required for demonstration surplus.")
+    if reasons:
+        return Screening(SafetyStatus.INELIGIBLE, reasons, now, None, SIMULATION_DECLARATION_VERSION)
+    return Screening(SafetyStatus.ELIGIBLE, ["Demonstration data only. Not approved for actual consumption."],
+                     now, deadline, SIMULATION_DECLARATION_VERSION)
+
+
 def screening_for_use(row, food, kitchen, now=None):
     now = now or datetime.now(timezone.utc)
     try:
-        result = screen_waste(row, food.name, getattr(kitchen, "verification_status", None),
-                              policy_for_batch(current_policy(), kitchen, row), now)
+        result = screen_batch(row, food, kitchen, now)
     except (TypeError, ValueError, OverflowError):
-        return Screening(SafetyStatus.PENDING, ["Stored safety evidence is invalid."], now, None, "invalid-evidence")
+        status = SafetyStatus.INELIGIBLE if row.is_simulated else SafetyStatus.PENDING
+        return Screening(status, ["Stored safety evidence is invalid."], now, None, "invalid-evidence")
+    if row.is_simulated:
+        return result
     if row.screened_at is None:
         # Preserve legacy screening information without treating it as validated evidence.
         legacy_expired = row.safe_until is not None and utc(row.safe_until) <= now
@@ -130,7 +163,7 @@ def waste_response(db, row, kitchen, food=None):
         available = max(0, row.confirmed_servings - reserved)
     return WasteResponse(
         **response_values(row), id=row.id, created_at=utc(row.created_at),
-        food_name=food.name, serving_unit=food.serving_unit,
+        food_name=food.name, serving_unit=food.serving_unit, is_simulated=row.is_simulated,
         image_id=row.prediction_id, image_url=f"/api/v1/vision/images/{row.prediction_id}" if row.prediction_id else None,
         predicted_food=row.predicted_food, confidence_score=row.confidence_score, model_version=row.model_version,
         estimated_servings=row.estimated_servings, safety_status=check.status,
@@ -149,6 +182,8 @@ def save_waste(db, kitchen, request, current=None):
     if request.prepared_at is not None and request.prepared_at > datetime.now(timezone.utc):
         raise HTTPException(422, "Preparation timestamp cannot be in the future")
     evidence = request.model_dump(mode="json", include=set(SafetyEvidence.model_fields), exclude_none=True)
+    if current is not None and current.is_simulated:
+        evidence.setdefault("discard_at", None)
     values = request.model_dump(exclude=set(SafetyEvidence.model_fields))
     if current is not None:
         previous = response_values(current)
@@ -177,7 +212,7 @@ def save_waste(db, kitchen, request, current=None):
                               if food.serving_unit == ServingUnit.PIECE
                               and count.get("count_food_item_id") == food.id else None)
     row.safety_evidence = evidence
-    check = screen_waste(row, food.name, getattr(kitchen, "verification_status", None), policy_for_batch(current_policy(), kitchen, row))
+    check = screen_batch(row, food, kitchen)
     row.safety_status = check.status
     row.screened_at = check.screened_at
     row.screening_reasons = check.reasons
@@ -192,6 +227,8 @@ def save_waste(db, kitchen, request, current=None):
 
 def patch_waste(db, kitchen, current, patch):
     previous = response_values(current)
+    if current.is_simulated and "discard_at" not in (current.safety_evidence or {}):
+        previous["discard_at"] = utc(current.safe_until)
     edits = patch.model_dump(exclude_unset=True)
     if any(key in edits and edits[key] != previous[key] for key in ("food_item_id", "waste_type", "prepared_at")):
         previous.update(dict.fromkeys(SafetyEvidence.model_fields))

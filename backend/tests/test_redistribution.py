@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 from app.core.config import settings
 from app.core.database import Base, get_db
 from app.core.dependencies import get_current_active_user
+from app.core.security import create_access_token
 from app.main import app
 from app.models.donation import Donation
 from app.models.enums import UserRole
@@ -269,7 +270,6 @@ def test_distance_and_score():
 
 def test_demo_seeder_isolated_and_idempotent(redistribution, monkeypatch):
     from sqlalchemy import func, select
-    from app.core.config import BACKEND_DIR
     from scripts.seed_redistribution_demo import seed, validate_target
 
     _, _, test_engine, _ = redistribution
@@ -277,10 +277,98 @@ def test_demo_seeder_isolated_and_idempotent(redistribution, monkeypatch):
         validate_target()
     monkeypatch.setattr(settings, "APP_ENV", "demo")
     monkeypatch.setattr(settings, "DATABASE_URL", "postgresql+psycopg://localhost/annachakra_demo_check")
-    monkeypatch.setattr(settings, "SAFETY_POLICY_PATH", BACKEND_DIR / "config/safety_policy.demo.json")
+    monkeypatch.setattr(settings, "SAFETY_POLICY_PATH", None)
     validate_target()
     with Session(test_engine) as db:
         assert seed(db, "test-password-for-demo", "example")
         assert not seed(db, "different-test-password", "example")
         assert db.scalar(select(func.count()).select_from(Donation).where(Donation.is_simulated)) == 6
         assert db.scalar(select(func.count()).select_from(WasteLog).where(WasteLog.is_simulated)) == 7
+
+def test_simulated_redistribution_without_policy(monkeypatch):
+    monkeypatch.setattr(settings, "APP_ENV", "demo")
+    monkeypatch.setattr(settings, "SAFETY_POLICY_PATH", None)
+    engine = create_engine("sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False})
+    Base.metadata.create_all(engine)
+    with Session(engine) as db:
+        seed_participants(db)
+        db.get(Kitchen, 1).is_simulated = True
+        db.get(NGO, 1).is_simulated = True
+        # A preexisting simulated fixture has only its persisted deadline.
+        db.get(WasteLog, 1).is_simulated = True
+        db.commit()
+
+    def session():
+        with Session(engine) as db:
+            yield db
+
+    def auth(user_id, role):
+        return {"Authorization": "Bearer " + create_access_token(user_id, role)}
+
+    kitchen = auth(1, UserRole.KITCHEN_STAFF)
+    ngo = auth(2, UserRole.NGO_MANAGER)
+    other_kitchen = auth(4, UserRole.KITCHEN_STAFF)
+    other_ngo = auth(3, UserRole.NGO_MANAGER)
+    monkeypatch.setitem(app.dependency_overrides, get_db, session)
+    waste = "/api/v1/waste-logs"
+    surplus = waste + "/available-surplus"
+    now = utcnow()
+    declaration = {"food_item_id": 1, "confirmed_servings": 20, "waste_type": "UNSERVED_SURPLUS",
+                   "unserved_confirmed": True, "safe_handling_confirmed": True,
+                   "contamination_suspected": False, "discard_at": (now + timedelta(hours=1)).isoformat()}
+    with TestClient(app) as client:
+        assert client.post(waste, json=declaration).status_code == 401
+        assert client.get("/api/v1/kitchens/me", headers=kitchen).json()["is_simulated"]
+        real = client.post(waste, headers=other_kitchen, json=declaration)
+        assert real.status_code == 201 and real.json()["available_servings"] == 0
+        created = client.post(waste, headers=kitchen, json=declaration)
+        assert created.status_code == 201, created.text
+        batch = created.json()
+        assert batch["is_simulated"] and batch["available_servings"] == 20
+        for invalid in ({"waste_type": "PLATE_WASTE"}, {"unserved_confirmed": False},
+                        {"contamination_suspected": True}, {"safe_handling_confirmed": False},
+                        {"discard_at": None}, {"discard_at": now.isoformat()}):
+            excluded = client.post(waste, headers=kitchen, json=declaration | invalid)
+            assert excluded.status_code == 201, excluded.text
+            assert excluded.json()["available_servings"] == 0
+            assert excluded.json()["safety_status"] == "INELIGIBLE"
+        rows = client.get(surplus, headers=kitchen).json()
+        assert {row["waste_log_id"]: row["available_quantity"] for row in rows} == {1: 50, batch["id"]: 20}
+        assert client.get(f"{waste}/{batch['id']}", headers=other_kitchen).status_code == 404
+
+        req = client.post(REQ, headers=ngo, json={
+            "people_to_feed": 10, "capacity_pieces": 15, "required_date": local_date(now).isoformat(),
+            "available_until": (now + timedelta(hours=2)).isoformat(), "accepted_categories": ["bread"],
+        })
+        assert req.status_code == 201, req.text
+        matches = client.post("/api/v1/matches", headers=kitchen, json={"waste_log_ids": [batch["id"]]})
+        assert matches.status_code == 200 and matches.json()["total"] == 1, matches.text
+        candidate = matches.json()["items"][0]
+        assert candidate["is_simulated"] and candidate["suggested_allocation"][0]["offered_servings"] == 15
+        offer_body = {"requirement_id": req.json()["id"], "items": [
+            {"waste_log_id": batch["id"], "offered_servings": 15},
+        ]}
+        offered = client.post(DON, headers=kitchen, json=offer_body)
+        assert offered.status_code == 201 and offered.json()["is_simulated"], offered.text
+        assert client.post(DON, headers=kitchen, json=offer_body).status_code == 409
+        remaining = client.get(surplus, headers=kitchen).json()
+        assert next(row for row in remaining if row["waste_log_id"] == batch["id"])["available_quantity"] == 5
+
+        donation = f"{DON}/{offered.json()['id']}"
+        assert client.post(donation + "/accept", headers=other_ngo).status_code == 404
+        assert client.post(donation + "/accept", headers=ngo).json()["status"] == "ACCEPTED"
+        assigned = client.post(donation + "/assign-delivery", headers=kitchen, json={"delivery_person_id": 1})
+        assert assigned.status_code == 200 and assigned.json()["status"] == "ASSIGNED", assigned.text
+        delivery = f"/api/v1/deliveries/{assigned.json()['delivery']['id']}"
+        assert client.post(delivery + "/dispatch", headers=kitchen).json()["status"] == "IN_TRANSIT"
+        assert client.post(delivery + "/mark-delivered", headers=kitchen).json()["status"] == "DELIVERED"
+        receipt = client.post(donation + "/confirm-receipt", headers=ngo, json={"inspected": True, "items": [
+            {"donation_item_id": offered.json()["items"][0]["id"], "received_servings": 15},
+        ]})
+        assert receipt.status_code == 200 and receipt.json()["status"] == "COMPLETED", receipt.text
+        impact = client.get("/api/v1/analytics/redistribution-summary", headers=ngo).json()
+        assert impact["is_simulated"] and impact["completed_donations"] == 1 and impact["ngos_served"] == 1
+        assert impact["quantities"][0]["received_quantity"] == 15
+        print(f"Simulated lifecycle: {batch['available_servings']} available, "
+              f"{receipt.json()['status']} donation, {impact['quantities'][0]['received_quantity']} pieces received")
+    engine.dispose()

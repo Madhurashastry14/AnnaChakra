@@ -106,7 +106,7 @@ export default function DonationMonitoringPage() {
                     {donation.cancellation_reason && !donation.failed_at ? <div><dt>Cancellation</dt><dd>{donation.cancellation_reason}</dd></div> : null}
                   </dl>
                   <p className="k-muted-text k-ngo-safety-note">The donation listing does not expose individual food-batch safety deadlines. Backend safety checks remain authoritative.</p>
-                  {donation.is_simulated ? <span className="k-demo-label">Simulated demo transaction</span> : null}
+                  {donation.is_simulated ? <span className="k-demo-label">Demonstration data only. Not approved for actual consumption.</span> : null}
                 </article>
               ))}
             </div>

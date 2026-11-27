@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Edit3,
-  Info,
   Phone,
   Plus,
   Truck,
@@ -356,14 +355,6 @@ export default function DeliveryPage() {
 
                         {donation.status === "ASSIGNED" ? (
                           <>
-                            <div className="k-callout k-callout-info">
-                              <Info size={16} aria-hidden="true" />
-                              <div>
-                                <strong>Check current safety evidence before dispatch</strong>
-                                <p>If batch facts have changed, refresh the backend screening before dispatch. The dispatch API performs its own current checks.</p>
-                                <ul>{donation.items?.map((item) => <li key={item.id}><Link to={`/kitchen/waste-logs/${item.waste_log_id}`}>{item.food_name}: review safety evidence</Link></li>)}</ul>
-                              </div>
-                            </div>
                             <Button loading={deliverySavingId === donation.id} onClick={() => runDonationAction(donation.id, "dispatch", null)}>Dispatch delivery</Button>
                           </>
                         ) : null}
@@ -416,7 +407,7 @@ export default function DeliveryPage() {
                         {donation.failed_at || donation.status === "CANCELLED" ? (
                           <p className="k-muted-text">{donation.failure_reason || donation.cancellation_reason || "Delivery cancelled"}{donation.failed_at ? ` · ${formatDateTime(donation.failed_at)}` : ""}</p>
                         ) : null}
-                        {donation.is_simulated ? <span className="k-demo-label">Simulated demo transaction</span> : null}
+                        {donation.is_simulated ? <span className="k-demo-label">Demonstration data only. Not approved for actual consumption.</span> : null}
                         {deliveryActionError[donation.id] ? <p className="k-form-error" role="alert">{deliveryActionError[donation.id]}</p> : null}
                       </article>
                     );

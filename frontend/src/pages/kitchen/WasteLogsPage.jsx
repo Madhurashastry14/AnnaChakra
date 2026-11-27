@@ -21,6 +21,7 @@ import {
 import PageHeader from "../../components/ui/PageHeader.jsx";
 import Button from "../../components/ui/Button.jsx";
 import { Card } from "../../components/ui/Card.jsx";
+import { useKitchen } from "../../components/kitchen/KitchenLayout.jsx";
 import { SafetyBadge } from "../../components/ui/Badge.jsx";
 import DataTable from "../../components/ui/DataTable.jsx";
 import Pagination from "../../components/ui/Pagination.jsx";
@@ -54,6 +55,7 @@ export default function WasteLogsPage() {
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const [page, setPage] = useState(1);
+  const { kitchen } = useKitchen();
   const [filters, setFilters] = useState({
     waste_type: "",
     safety_status: "",
@@ -161,13 +163,13 @@ export default function WasteLogsPage() {
               placeholder="All types"
               options={WASTE_TYPES.map((value) => ({ value, label: wasteTypeLabel(value) }))}
             />
-            <SelectInput
+            {!kitchen?.is_simulated ? <SelectInput
               label="Safety status"
               value={filters.safety_status}
               onChange={(event) => setFilter("safety_status", event.target.value)}
               placeholder="All statuses"
               options={SAFETY_STATUSES.map((value) => ({ value, label: labelFor(value) }))}
-            />
+            /> : null}
             <FoodSelect
               foods={foods}
               value={filters.food_item_id}
@@ -250,8 +252,8 @@ export default function WasteLogsPage() {
                 { key: "type", label: "Type", render: (row) => wasteTypeLabel(row.waste_type) },
                 {
                   key: "safety",
-                  label: "Safety",
-                  render: (row) => <SafetyBadge status={row.safety_status} />,
+                  label: "Redistribution",
+                  render: (row) => row.is_simulated ? null : <SafetyBadge status={row.safety_status} />,
                 },
                 {
                   key: "available",

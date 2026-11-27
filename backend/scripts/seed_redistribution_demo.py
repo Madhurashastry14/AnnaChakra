@@ -17,7 +17,7 @@ from app.models.organization import DeliveryPersonnel, Kitchen, NGO, NGORequirem
 from app.models.user import User
 from app.models.waste import WasteLog
 from app.services.ngo_requirements import local_date, now_utc
-from app.services.safety import current_policy, policy_for_batch, screen_waste
+from app.services.waste import screen_batch
 
 KITCHEN_EMAIL = "redistribution-kitchen@example.com"
 NGO_EMAIL = "redistribution-ngo@example.com"
@@ -50,11 +50,8 @@ def demo_org(db, model, account, role, label, password, longitude):
 
 
 def seed(db, password, batch_key):
-    policy = current_policy()
     now = now_utc()
     batch_key = batch_key or local_date(now).isoformat()
-    if policy is None or "biryani" not in policy.rules or "biryani" in policy.blocked_foods:
-        raise ValueError("Configure the supplied demo Biryani safety policy")
     if db.get_bind().dialect.name == "postgresql":
         db.execute(text("SELECT pg_advisory_xact_lock(hashtextextended('annachakra-redistribution-demo', 0))"))
     kitchen = demo_org(db, Kitchen, KITCHEN_EMAIL, UserRole.KITCHEN_STAFF,
@@ -85,28 +82,22 @@ def seed(db, password, batch_key):
     db.add(requirement)
     db.flush()
 
-    rule = policy.rules["biryani"]
-    low, high = rule.min_temperature_c, rule.max_temperature_c
-    temp = (low + high) / 2 if low is not None and high is not None else low if low is not None else high
     prepared = now - timedelta(minutes=12)
-    measured = now - timedelta(minutes=1)
     evidence = {
-        "unserved_confirmed": True, "storage_verified": True, "contamination_suspected": False,
-        "storage_method": rule.storage_method, "temperature_history_started_at": prepared.isoformat(),
-        "temperature_measured_at": measured.isoformat(), "temperature_history_min_c": temp,
-        "temperature_history_max_c": temp, "temperature_history_reference": label, "uncontrolled_minutes": 0,
+        "unserved_confirmed": True,
+        "contamination_suspected": False,
+        "discard_at": (now + timedelta(hours=1)).isoformat(),
     }
     stages = (None, DonationStatus.PENDING, DonationStatus.ACCEPTED, DonationStatus.ASSIGNED,
               DonationStatus.IN_TRANSIT, DonationStatus.DELIVERED, DonationStatus.COMPLETED)
     for index, status in enumerate(stages):
         waste = WasteLog(kitchen_id=kitchen.id, food_item_id=food.id, is_simulated=True,
                          confirmed_servings=20, waste_type="UNSERVED_SURPLUS", notes=label if status is None else
-                         f"{label} {status.value}", prepared_at=prepared, storage_temperature=temp,
+                         f"{label} {status.value}", prepared_at=prepared,
                          safe_handling_confirmed=True, safety_evidence=evidence)
-        screened = screen_waste(waste, food.name, kitchen.verification_status,
-                                policy_for_batch(policy, kitchen, waste), now)
+        screened = screen_batch(waste, food, kitchen, now)
         if screened.status != SafetyStatus.ELIGIBLE or screened.safe_until <= now + timedelta(minutes=22):
-            raise ValueError("Demo policy does not allow a usable simulated holding window")
+            raise ValueError("The simulated batch does not have a usable discard window")
         waste.safety_status, waste.safe_until = screened.status, screened.safe_until
         waste.screening_reasons, waste.screened_at = screened.reasons, screened.screened_at
         waste.safety_policy_version = screened.policy_version
