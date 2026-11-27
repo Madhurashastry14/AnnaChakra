@@ -1,3 +1,5 @@
+import json
+import os
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from types import SimpleNamespace
@@ -184,6 +186,82 @@ def test_screening_expiration_and_reassessment(waste_api, monkeypatch):
     assert result.json()["safety_status"] == "INELIGIBLE", result.text
     result = client.post(WASTE, json=BASIC | evidence | {"storage_temperature": 40})
     assert result.json()["safety_status"] == "INELIGIBLE", result.text
+
+
+def test_create_update_and_rescreen_use_current_policy(waste_api, monkeypatch, tmp_path):
+    client, _, engine, _ = waste_api
+    with Session(engine) as db:
+        db.add(FoodItem(id=7, name="Biryani", category="main", serving_unit="serving",
+                        is_vegetarian=False, default_servings_per_person=1))
+        db.commit()
+
+    policy_path = tmp_path / "policy.json"
+
+    def write_policy(version):
+        policy_path.write_text(json.dumps({
+            "version": version,
+            "authority_reference": "Isolated test policy",
+            "rules": {
+                "biryani": {
+                    "storage_method": "HOT_HOLDING",
+                    "max_holding_minutes": 120,
+                    "max_uncontrolled_minutes": 0,
+                    "max_measurement_age_minutes": 60,
+                    "min_temperature_c": 65,
+                },
+            },
+            "blocked_foods": [],
+        }), encoding="utf-8")
+
+    monkeypatch.setattr(settings, "APP_ENV", "test")
+    monkeypatch.setattr(settings, "SAFETY_POLICY_PATH", policy_path)
+    now = datetime.now(timezone.utc)
+    prepared = now - timedelta(minutes=10)
+    payload = {
+        "food_item_id": 7,
+        "confirmed_servings": 5,
+        "waste_type": "UNSERVED_SURPLUS",
+        "prepared_at": prepared.isoformat(),
+        "storage_temperature": 70,
+        "safe_handling_confirmed": True,
+        "unserved_confirmed": True,
+        "storage_verified": True,
+        "contamination_suspected": False,
+        "storage_method": "HOT_HOLDING",
+        "temperature_measured_at": (now - timedelta(minutes=1)).isoformat(),
+        "temperature_history_started_at": (prepared - timedelta(minutes=1)).isoformat(),
+        "temperature_history_min_c": 67,
+        "temperature_history_max_c": 72,
+        "temperature_history_reference": "isolated-test-record",
+        "uncontrolled_minutes": 0,
+    }
+
+    write_policy("fixture-v1")
+    created = client.post(WASTE, json=payload)
+    assert created.status_code == 201, created.text
+    saved = created.json()
+    assert saved["safety_status"] == "ELIGIBLE"
+    assert saved["safety_policy_version"] == "fixture-v1"
+
+    original_stat = policy_path.stat()
+    write_policy("fixture-v2")
+    os.utime(policy_path, ns=(original_stat.st_atime_ns, original_stat.st_mtime_ns))
+    path = f"{WASTE}/{saved['id']}"
+
+    outdated = client.get(path).json()
+    assert outdated["safety_status"] == "PENDING"
+    assert outdated["safety_policy_version"] == "fixture-v2"
+
+    updated = client.patch(path, json={"notes": "isolated policy refresh"})
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["safety_status"] == "ELIGIBLE"
+    assert updated.json()["safety_policy_version"] == "fixture-v2"
+
+    write_policy("fixture-v3")
+    rescreened = client.post(path + "/safety-check", json={})
+    assert rescreened.status_code == 200, rescreened.text
+    assert rescreened.json()["safety_status"] == "ELIGIBLE"
+    assert rescreened.json()["safety_policy_version"] == "fixture-v3"
 
 
 def test_reservations_and_completed_donations_protect_quantity(waste_api):

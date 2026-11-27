@@ -8,7 +8,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.core.config import settings
+from app.core.config import BACKEND_DIR, settings
 from app.models.enums import SafetyStatus, VerificationStatus, WasteType
 
 logger = logging.getLogger(__name__)
@@ -49,20 +49,40 @@ class SafetyPolicy(BaseModel):
 
 
 @lru_cache(maxsize=4)
-def _read_policy(path, modified, size):
-    return SafetyPolicy.model_validate_json(path.read_text(encoding="utf-8"))
+def _read_policy(contents: bytes) -> SafetyPolicy:
+    return SafetyPolicy.model_validate_json(contents)
 
 
-def current_policy():
+def _resolved_policy_path(configured_path: str | Path) -> Path:
+    path = Path(configured_path).expanduser()
+    if not path.is_absolute():
+        path = BACKEND_DIR / path
+    return path.resolve()
+
+
+def _is_demo_policy(path: Path, policy: SafetyPolicy) -> bool:
+    authority = policy.authority_reference.casefold()
+    return (
+        path.name.casefold().endswith(".demo.json")
+        or policy.version.casefold().startswith("demo-")
+        or "simulated" in authority
+    )
+
+
+def current_policy() -> SafetyPolicy | None:
     if settings.SAFETY_POLICY_PATH is None:
         return None
     try:
-        path = Path(settings.SAFETY_POLICY_PATH).resolve()
-        stat = path.stat()
-        return _read_policy(path, stat.st_mtime_ns, stat.st_size)
+        path = _resolved_policy_path(settings.SAFETY_POLICY_PATH)
+        policy = _read_policy(path.read_bytes())
     except (OSError, ValueError) as exc:
         logger.warning("Food safety policy unavailable (%s)", type(exc).__name__)
         return None
+    environment = settings.APP_ENV.strip().casefold()
+    if _is_demo_policy(path, policy) and environment not in {"demo", "test"}:
+        logger.error("Refusing to load a simulated food safety policy outside APP_ENV=demo or test")
+        return None
+    return policy
 
 
 @dataclass(frozen=True)

@@ -1,9 +1,14 @@
+import logging
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from app.core.database import engine
+from app.core.config import settings
 from app.routers.admin import router as admin_router
 from app.routers.analytics import router as analytics_router
 from app.routers.auth import router as auth_router
@@ -16,11 +21,37 @@ from app.routers.menu import router as menu_router
 from app.routers.ngos import router as ngos_router
 from app.routers.vision import router as vision_router
 from app.routers.waste import router as waste_router
+from app.services.safety import DEFAULT_VERSION, current_policy
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
+    policy = current_policy()
+    if policy is None:
+        logger.warning(
+            "Food safety policy unavailable; screening remains fail-closed "
+            "(environment=%s, policy_version=%s)",
+            settings.APP_ENV,
+            DEFAULT_VERSION,
+        )
+    else:
+        supported_foods = ", ".join(sorted(policy.rules)) or "none"
+        logger.info(
+            "Food safety policy loaded (environment=%s, version=%s, supported_foods=%s)",
+            settings.APP_ENV,
+            policy.version,
+            supported_foods,
+        )
+    yield
+
 
 app = FastAPI(
     title="AnnaChakra API",
     description="AI-powered food waste management platform",
-    version="0.1.0"
+    version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(

@@ -6,10 +6,13 @@ from pydantic import Field, field_validator
 from ml.vision.config import ARTIFACTS, MAX_PIXELS
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+BACKEND_DIR = Path(__file__).resolve().parents[2]
+
 
 class Settings(BaseSettings):
     DATABASE_URL: str
     SECRET_KEY: str
+    APP_ENV: str = Field(default="development", min_length=1)
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     VISION_UPLOAD_DIR: Path = Path(__file__).resolve().parents[2] / "uploads" / "vision"
     VISION_ARTIFACT_DIR: Path = ARTIFACTS
@@ -36,7 +39,7 @@ class Settings(BaseSettings):
         return values
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=BACKEND_DIR / ".env",
         extra="ignore"
     )
 

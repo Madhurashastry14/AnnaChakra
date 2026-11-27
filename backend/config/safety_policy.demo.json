@@ -1,0 +1,14 @@
+{
+  "version": "demo-v1",
+  "authority_reference": "Simulated hackathon testing policy. Not approved for real food redistribution.",
+  "rules": {
+    "biryani": {
+      "storage_method": "HOT_HOLDING",
+      "max_holding_minutes": 120,
+      "max_uncontrolled_minutes": 0,
+      "max_measurement_age_minutes": 60,
+      "min_temperature_c": 65
+    }
+  },
+  "blocked_foods": []
+}
