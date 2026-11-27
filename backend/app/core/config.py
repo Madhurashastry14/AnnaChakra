@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     VISION_MAX_BYTES: int = Field(default=5 * 1024 * 1024, gt=0)
     VISION_MAX_PIXELS: int = Field(default=MAX_PIXELS, gt=0)
     VISION_CONFIDENCE_THRESHOLD: float = Field(default=0.65, ge=0, le=1)
+    SAFETY_POLICY_PATH: Path | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",

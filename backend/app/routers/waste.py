@@ -12,7 +12,7 @@ from app.models.enums import SafetyStatus, WasteType
 from app.models.food import FoodItem
 from app.models.organization import Kitchen
 from app.models.waste import WasteLog
-from app.schemas.waste import WastePatch, WasteRequest, WasteResponse
+from app.schemas.waste import SafetyCheck, SafetyResponse, WastePatch, WasteRequest, WasteResponse
 from app.services.waste import owned_waste, patch_waste, save_waste, waste_response
 
 logger = logging.getLogger(__name__)
@@ -78,3 +78,12 @@ def detail(waste_id: int, kitchen: Kitchen = Depends(get_current_kitchen), db: S
 def update(waste_id: int, request: WastePatch, kitchen: Kitchen = Depends(get_current_kitchen),
            db: Session = Depends(get_db)):
     return write(db, lambda: patch_waste(db, kitchen, owned_waste(db, kitchen.id, waste_id, lock=True), request))
+
+
+@router.post("/{waste_id}/safety-check", response_model=SafetyResponse)
+def safety_check(waste_id: int, request: SafetyCheck, kitchen: Kitchen = Depends(get_current_kitchen),
+                 db: Session = Depends(get_db)):
+    result = write(db, lambda: patch_waste(db, kitchen, owned_waste(db, kitchen.id, waste_id, lock=True), request))
+    return SafetyResponse(waste_log_id=result.id, safety_status=result.safety_status,
+                          reasons=result.safety_notes, safe_until=result.safe_until,
+                          screened_at=result.screened_at, safety_policy_version=result.safety_policy_version)

@@ -10,7 +10,8 @@ from app.models.enums import DonationStatus, SafetyStatus, ServingUnit, WasteTyp
 from app.models.food import FoodItem
 from app.models.meal_record import MealRecord, MealRecordItem
 from app.models.waste import WasteLog
-from app.schemas.waste import WasteRequest, WasteResponse
+from app.schemas.waste import SafetyEvidence, WasteRequest, WasteResponse
+from app.services.safety import Screening, current_policy, screen_waste
 from app.services.vision import owned_prediction
 
 RESERVED = {DonationStatus.PENDING, DonationStatus.ACCEPTED, DonationStatus.ASSIGNED,
@@ -74,20 +75,37 @@ def response_values(row):
         "waste_type": row.waste_type, "prepared_at": utc(row.prepared_at),
         "storage_temperature": row.storage_temperature, "safe_handling_confirmed": row.safe_handling_confirmed,
         "notes": row.notes,
+        **{key: (row.safety_evidence or {}).get(key) for key in SafetyEvidence.model_fields},
     }
+
+
+def screening_for_use(row, food, kitchen, now=None):
+    now = now or datetime.now(timezone.utc)
+    result = screen_waste(row, food.name, getattr(kitchen, "verification_status", None), current_policy(), now)
+    if row.screened_at is None:
+        # Preserve legacy screening information without treating it as validated evidence.
+        legacy_expired = row.safe_until is not None and utc(row.safe_until) <= now
+        if row.safety_status == SafetyStatus.INELIGIBLE or legacy_expired:
+            reason = "The legacy screen rejected this record or its deadline has passed."
+            return Screening(SafetyStatus.INELIGIBLE, [reason], now, None, result.policy_version)
+    return result
 
 
 def waste_response(db, row, kitchen, food=None):
     food = food if food is not None else db.get(FoodItem, row.food_item_id)
-    status = SafetyStatus.PENDING
-    reasons = ["Redistribution screening is pending."]
+    check = screening_for_use(row, food, kitchen)
+    available = 0
+    if check.status == SafetyStatus.ELIGIBLE:
+        reserved = fsum(offered for _, offered, _ in _donation_allocations(db, row.id))
+        available = max(0, row.confirmed_servings - reserved)
     return WasteResponse(
         **response_values(row), id=row.id, created_at=utc(row.created_at),
         food_name=food.name, serving_unit=food.serving_unit,
         image_id=row.prediction_id, image_url=f"/api/v1/vision/images/{row.prediction_id}" if row.prediction_id else None,
         predicted_food=row.predicted_food, confidence_score=row.confidence_score, model_version=row.model_version,
-        estimated_servings=row.estimated_servings, safety_status=status,
-        safety_notes=reasons, safe_until=None, available_servings=0,
+        estimated_servings=row.estimated_servings, safety_status=check.status,
+        safety_notes=check.reasons, safe_until=check.safe_until, available_servings=available,
+        screened_at=utc(row.screened_at), safety_policy_version=check.policy_version,
     )
 
 
@@ -100,10 +118,13 @@ def save_waste(db, kitchen, request, current=None):
         raise HTTPException(422, "Piece-based food items require whole-number quantities")
     if request.prepared_at is not None and request.prepared_at > datetime.now(timezone.utc):
         raise HTTPException(422, "Preparation timestamp cannot be in the future")
-    values = request.model_dump()
+    evidence = request.model_dump(mode="json", include=set(SafetyEvidence.model_fields), exclude_none=True)
+    values = request.model_dump(exclude=set(SafetyEvidence.model_fields))
     if current is not None:
         previous = response_values(current)
-        if any(value != previous[key] for key, value in values.items() if key != "notes"):
+        protected = {"food_item_id", "confirmed_servings", "waste_type", "prepared_at",
+                     "meal_record_item_id", "prediction_id"}
+        if any(values[key] != previous[key] for key in protected):
             if _donation_allocations(db, current.id):
                 raise HTTPException(409, "An existing donation protects this waste log from operational edits")
     prediction = owned_prediction(db, kitchen_id, request.prediction_id) if request.prediction_id else None
@@ -118,6 +139,13 @@ def save_waste(db, kitchen, request, current=None):
         row.confidence_score = metadata.get("confidence")
         row.model_version = metadata.get("model_version")
         row.estimated_servings = None
+    row.safety_evidence = evidence
+    check = screen_waste(row, food.name, getattr(kitchen, "verification_status", None), current_policy())
+    row.safety_status = check.status
+    row.screened_at = check.screened_at
+    row.screening_reasons = check.reasons
+    row.safe_until = check.safe_until
+    row.safety_policy_version = check.policy_version
     db.add(row)
     db.flush()
     result = waste_response(db, row, kitchen, food)
@@ -126,8 +154,13 @@ def save_waste(db, kitchen, request, current=None):
 
 
 def patch_waste(db, kitchen, current, patch):
+    previous = response_values(current)
+    edits = patch.model_dump(exclude_unset=True)
+    if any(key in edits and edits[key] != previous[key] for key in ("food_item_id", "waste_type", "prepared_at")):
+        previous.update(dict.fromkeys(SafetyEvidence.model_fields))
+        previous.update(storage_temperature=None, safe_handling_confirmed=False)
     try:
-        request = WasteRequest.model_validate(response_values(current) | patch.model_dump(exclude_unset=True))
+        request = WasteRequest.model_validate(previous | edits)
     except ValidationError as exc:
         raise HTTPException(422, "Invalid waste log update") from exc
     return save_waste(db, kitchen, request, current)

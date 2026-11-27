@@ -1,7 +1,7 @@
 ﻿from datetime import datetime
 
 from sqlalchemy import (
-    String, Text, Float, Boolean, ForeignKey,
+    String, Text, Float, Boolean, ForeignKey, JSON,
     DateTime, Enum, func, CheckConstraint
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -98,6 +98,11 @@ class WasteLog(Base):
         Text,
         nullable=True
     )
+
+    safety_evidence: Mapped[dict | None] = mapped_column(JSON)
+    screening_reasons: Mapped[list[str] | None] = mapped_column(JSON)
+    screened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    safety_policy_version: Mapped[str | None] = mapped_column(String(100))
 
     safe_until: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
