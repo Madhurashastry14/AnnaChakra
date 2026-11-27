@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import HTTPException
 from sqlalchemy import text
@@ -12,6 +12,7 @@ from app.routers.forecasts import router as forecasts_router
 from app.routers.kitchens import router as kitchens_router
 from app.routers.meal_records import router as meal_records_router
 from app.routers.ngos import router as ngos_router
+from app.routers.vision import router as vision_router
 
 app = FastAPI(
     title="AnnaChakra API",
@@ -35,6 +36,7 @@ app.include_router(food_items_router)
 app.include_router(forecasts_router)
 app.include_router(meal_records_router)
 app.include_router(admin_router)
+app.include_router(vision_router)
 
 
 @app.get("/health", tags=["Health"])

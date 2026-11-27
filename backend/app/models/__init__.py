@@ -19,6 +19,7 @@ from app.models.meal_record import (
     MealRecordItem
 )
 
+from app.models.vision import VisionPrediction
 from app.models.waste import WasteLog
 
 from app.models.donation import (
