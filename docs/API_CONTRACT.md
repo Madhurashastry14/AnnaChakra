@@ -76,23 +76,31 @@ Response: request fields plus `id`, `created_at`, and each item's `id`, `served_
 
 ## 6. Computer vision and waste logging (kitchen UI)
 
-`POST /vision/analyze` — Kitchen, multipart field `image` (JPEG/PNG, max 5 MB). Response:
+`POST /vision/predict` — Kitchen staff bearer token and associated kitchen. Send `multipart/form-data` field `image` with a JPEG, PNG, or WebP (5 MiB by default). `POST /vision/analyze` is an alias. Response example with no recognition available:
 ```json
-{"image_id":"opaque-upload-id","predicted_food":"chapati","food_item_id":3,"confidence_score":0.87,"estimated_servings":null,"quantity_method":"UNAVAILABLE","requires_confirmation":true}
+{"prediction_id":"aabbccddeeff00112233445566778899","image_id":"aabbccddeeff00112233445566778899","predicted_food":null,"food_item_id":null,"confidence":null,"confidence_score":null,"model_version":null,"serving_unit":null,"top_predictions":[],"estimated_servings":null,"quantity_method":"UNAVAILABLE","requires_confirmation":true,"requires_food_confirmation":true,"requires_quantity_confirmation":true,"warnings":["Food recognition unavailable. Select the food manually."]}
 ```
-`food_item_id`, prediction and confidence may be null if unavailable. Confidence is 0–1, not safety probability. Quantity method UNAVAILABLE or EXPERIMENTAL. Absolute quantity cannot be reliably inferred from ordinary photos; staff confirm quantity. If model unavailable, accept valid upload and return null predictions. Upload IDs scoped to owner; no arbitrary file paths. No safety inference from images.
+Each `top_predictions` entry has `label`, `food`, `food_item_id`, `confidence`, and `serving_unit`. A catalogue match may be null. Confidence ranges from 0 to 1 and describes classification only. Keep food editable even at high confidence and require a separately entered quantity. Show suggestions or a searchable manual selector after upload completion. `GET /vision/images/{prediction_id}` returns bytes to the owning kitchen with bearer authentication. Fetch the image as an authenticated blob. There is no public static URL.
+
+Vision errors include 401 (authentication), 403 (role), 404 (missing kitchen or inaccessible image), 413 (byte or decoded dimension limit), 415 (unsupported extension/content or corrupt image), 422 (missing multipart field), and 500 (storage or database failure).
 
 `POST /waste-logs` — Kitchen, 201. Request:
 ```json
-{"image_id":"opaque-upload-id","meal_record_item_id":1,"food_item_id":3,"confirmed_servings":25,"waste_type":"UNSERVED_SURPLUS","prepared_at":"2026-11-27T05:00:00Z","storage_temperature":null}
+{"prediction_id":"aabbccddeeff00112233445566778899","meal_record_item_id":1,"food_item_id":3,"confirmed_servings":25,"waste_type":"UNSERVED_SURPLUS","prepared_at":"2026-11-27T05:00:00Z","storage_temperature":null,"safe_handling_confirmed":false}
 ```
-`image_id` and meal_record_item_id nullable (manual fallback). Types UNSERVED_SURPLUS, PLATE_WASTE, SPOILED_FOOD. Positive confirmed quantity. Linked item must match kitchen and food; cumulative logged unserved quantity cannot exceed recorded surplus. Response includes request fields, id, image_url (nullable, authorized access), predicted_food, confidence_score, estimated_servings, safety_status (PENDING), safety_notes, available_servings, created_at. `GET /waste-logs` list; `GET /waste-logs/{id}` detail.
+The optional `prediction_id` also accepts the legacy request key `image_id`. Omit both for manual logs. `meal_record_item_id`, `prepared_at`, `storage_temperature` in Celsius, and `notes` are optional. Supply a time zone with timestamps. Types are `UNSERVED_SURPLUS`, `PLATE_WASTE`, and `SPOILED_FOOD`. Quantities are positive and finite with whole pieces. Linked food must match the meal's dish. Linked unserved and spoiled waste share the unserved balance. Plate waste uses its own recorded balance when known.
+
+Responses include the request values plus `id`, `created_at`, `food_name`, `serving_unit`, `image_id`, `image_url`, server-owned `predicted_food`, `confidence_score`, `model_version`, `estimated_servings`, `safety_status`, `safety_notes` (list), `screened_at`, `safe_until`, `safety_policy_version`, and `available_servings`. Use `GET /waste-logs/{id}` for detail and `PATCH /waste-logs/{id}` for partial staff edits. `GET /waste-logs` returns a list sorted newest first and accepts `limit` (1–100, default 20), `offset`, `waste_type`, `safety_status`, `food_item_id`, `created_from`, and `created_to`.
+
+Waste errors include 400 (invalid date range), 401 (authentication), 403 (role), 404 (missing or inaccessible reference), 409 (quantity accounting or donation conflict), 422 (validation), and 500 (transaction failure).
 
 `POST /waste-logs/{id}/safety-check` — Kitchen. Request:
 ```json
-{"unserved_confirmed":true,"handling_verified":true,"storage_verified":true,"contamination_suspected":false,"storage_temperature":null,"safe_until":"2026-11-27T08:00:00Z","notes":"Staff verification"}
+{"unserved_confirmed":true,"handling_verified":true,"storage_verified":true,"contamination_suspected":false,"storage_temperature":null,"storage_method":"HOT_HOLDING","notes":"Staff verification"}
 ```
-Response: `{"waste_log_id":1,"safety_status":"PENDING","safe_until":null,"reasons":["Storage evidence incomplete"]}` (illustrative). Status PENDING, ELIGIBLE, INELIGIBLE. Only unserved surplus with documented handling, applicable time/temperature evidence and a valid safe deadline can qualify under configured food-specific safety policy. Missing evidence fails closed; no universal safe temperature/time assumed. Staff attestations are not a guarantee of safety. Recheck deadline at matching, acceptance and dispatch. Persist check evidence; no real food distribution based solely on prototype.
+The JSON body is a partial evidence update. Send an empty object to recheck stored evidence. The optional evidence fields also work on waste create and patch. In addition to the example, fields include `prepared_at`, `temperature_measured_at`, `temperature_history_started_at`, `temperature_history_min_c`, `temperature_history_max_c`, `temperature_history_reference`, `uncontrolled_minutes`, and `discard_at` (a shorter staff-provided deadline). `safe_until` is accepted as a legacy input alias for `discard_at` and cannot extend eligibility. `handling_verified` is a safety-check input alias for `safe_handling_confirmed`. Storage methods are `HOT_HOLDING`, `REFRIGERATED`, `FROZEN`, `AMBIENT`, and `UNKNOWN`.
+
+The check returns `waste_log_id`, `safety_status`, `safe_until`, `reasons`, `screened_at`, and `safety_policy_version`. Show `PENDING` as needing evidence or review, `INELIGIBLE` as unavailable, and `ELIGIBLE` as having passed the configured checks. Clients cannot write status or prediction metadata. Only eligible, unexpired records have positive availability. See the [operator guide](VISION_WASTE.md).
 
 ## 7. NGO requirements (NGO UI)
 

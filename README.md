@@ -276,3 +276,7 @@ npm run build
 ---
 
 **AnnaChakra — Predict Better. Waste Less. Share More.**
+
+## Food recognition and waste screening
+
+See the [vision and waste setup guide](docs/VISION_WASTE.md) for local model artifacts, private uploads, the kitchen workflow, and safety policy configuration.
