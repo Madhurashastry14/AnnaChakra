@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Frontend
+node_modules/
+dist/
+build/
+.vite/
+
+# ML datasets
+ml/datasets/
+ml/data/
+
+# Trained model artifacts
+*.joblib
+*.pkl
+*.keras
+*.h5
+*.onnx
+
+# Uploaded images
+backend/uploads/
+
+# Logs
+*.log
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
