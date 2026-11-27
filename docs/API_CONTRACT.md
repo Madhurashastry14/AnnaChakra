@@ -11,7 +11,7 @@ JSON except image upload (multipart/form-data). Integer IDs, ISO 8601 timestamps
 
 | Method | Path | Access | Body |
 |---|---|---|---|
-| POST | /auth/register | Public | name, email, password, role (`KITCHEN_STAFF` or `NGO_MANAGER`; `ADMIN` is rejected) |
+| POST | /auth/register | Public | name, email, password, role (kitchen or NGO only) |
 | POST | /auth/login | Public | email, password |
 | GET | /auth/me | All | — |
 

@@ -1,24 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Frontend
+node_modules/
+dist/
+build/
+.vite/
+
+# ML datasets
+ml/datasets/
+ml/data/
+
+# Trained model artifacts
+*.joblib
+*.pkl
+*.keras
+*.h5
+*.onnx
+
+# Uploaded images
+backend/uploads/
+
 # Logs
-logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# IDE and OS
+.vscode/
+.idea/
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
+
+# Generated forecasting reports, plots, and models
+ml/artifacts/forecasting/
+
+# Generated vision manifests, reports and weights
+ml/artifacts/vision/
