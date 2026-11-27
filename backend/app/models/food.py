@@ -61,6 +61,8 @@ class FoodItem(Base):
         JSON, default=list, server_default="[]",
     )
 
+    supported_meal_types: Mapped[list[str] | None] = mapped_column(JSON(none_as_null=True))
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now()

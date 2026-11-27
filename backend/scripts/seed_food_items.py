@@ -284,6 +284,10 @@ DEFAULT_FOOD_ITEMS: tuple[dict[str, object], ...] = (
 )
 
 
+BREAKFAST_FOODS = {"Idli", "Dosa", "Poha", "Upma", "Kuzhi Paniyaram"}
+ALL_MEAL_FOODS = {"Poori", "Paratha", "Sambar"}
+
+
 def seed_food_catalogue(
     db: Session,
     catalogue: Sequence[dict[str, object]] = DEFAULT_FOOD_ITEMS,
@@ -308,7 +312,13 @@ def seed_food_catalogue(
         name = definition["name"]
         food = foods.get(name.casefold())
         role = seed_role(name)
-        if food is None or role is None or food.food_role is not None:
+        if food is None or role is None:
+            continue
+        if food.supported_meal_types is None:
+            food.supported_meal_types = (["BREAKFAST"] if name in BREAKFAST_FOODS else
+                                         ["BREAKFAST", "LUNCH", "DINNER"] if name in ALL_MEAL_FOODS else
+                                         ["LUNCH", "DINNER"])
+        if food.food_role is not None:
             continue
         food.food_role = role
         newly_classified[name] = food

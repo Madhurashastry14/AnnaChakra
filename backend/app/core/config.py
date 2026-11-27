@@ -1,6 +1,8 @@
 from pathlib import Path
 
-from pydantic import Field
+from math import isfinite
+
+from pydantic import Field, field_validator
 from ml.vision.config import ARTIFACTS, MAX_PIXELS
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -23,6 +25,15 @@ class Settings(BaseSettings):
     WASTE_EFFICIENT_THRESHOLD: float = Field(default=5, ge=0, le=100)
     WASTE_EFFICIENCY_FLOOR: float = Field(default=65, ge=0, le=100)
     WASTE_PREFERENCE_CHANGE: float = Field(default=25, gt=0)
+
+    MENU_SCORE_WEIGHTS: tuple[float, float, float, float, float] = (0.30, 0.25, 0.25, 0.10, 0.10)
+
+    @field_validator("MENU_SCORE_WEIGHTS")
+    @classmethod
+    def valid_menu_weights(cls, values):
+        if not all(isfinite(value) and 0 <= value <= 1 for value in values) or not sum(values):
+            raise ValueError("Menu score weights must be within [0, 1], with a positive sum")
+        return values
 
     model_config = SettingsConfigDict(
         env_file=".env",

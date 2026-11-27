@@ -10,7 +10,7 @@ from pydantic import (
     model_validator,
 )
 
-from app.models.enums import FoodRole, ServingUnit
+from app.models.enums import FoodRole, MealType, ServingUnit
 
 
 class IngredientUnit(str, Enum):
@@ -43,6 +43,15 @@ class RecipeIngredient(BaseModel):
 
 class MenuFoodFields(BaseModel):
     food_role: FoodRole | None = None
+    supported_meal_types: list[MealType] | None = None
+
+    @field_validator("supported_meal_types")
+    @classmethod
+    def unique_meal_types(cls, values):
+        if values is not None and len(values) != len(set(values)):
+            raise ValueError("Meal types must be unique")
+        return values
+
     uptake_rate: Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)] = 0.75
     preference_weight: Annotated[float, Field(gt=0, allow_inf_nan=False)] = 1
     compatible_main_food_item_ids: list[Annotated[int, Field(strict=True, gt=0, le=2147483647)]] = Field(
