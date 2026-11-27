@@ -10,6 +10,7 @@ from app.routers.delivery_personnel import router as delivery_personnel_router
 from app.routers.food_items import router as food_items_router
 from app.routers.forecasts import router as forecasts_router
 from app.routers.kitchens import router as kitchens_router
+from app.routers.meal_records import router as meal_records_router
 from app.routers.ngos import router as ngos_router
 
 app = FastAPI(
@@ -32,6 +33,7 @@ app.include_router(ngos_router)
 app.include_router(delivery_personnel_router)
 app.include_router(food_items_router)
 app.include_router(forecasts_router)
+app.include_router(meal_records_router)
 app.include_router(admin_router)
 
 

@@ -44,7 +44,7 @@ def forecast_dish(food, kitchen_id, meal_date, meal_type, expected_people, obser
             "default_servings_per_person": default_rate, "historical_rate": serving_rate(history),
             "previous_demand": served[-1], "rolling_7": mean(served[-7:]),
             "rolling_30": mean(served[-30:]), "history_count": count,
-            "history_window_days": window_days,
+            "history_window_days": window_days, "meal_date": meal_date,
         }, version=active_model.version)
         if prediction is None:
             warnings.append("The active model did not support this forecast. Used local history.")

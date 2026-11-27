@@ -32,24 +32,30 @@ SCHEMAS = {
 }
 
 
-def institutional_records(raw):
+def institutional_records(raw, *, keep_history_only=False):
     frame = raw.drop_duplicates().copy()
     frame["meal_date"] = pd.to_datetime(frame.meal_date, errors="coerce").dt.normalize()
+    frame["expected_people"] = pd.to_numeric(frame.expected_people, errors="coerce")
     prepared, leftover = frame.prepared_servings, frame.leftover_servings
-    waste = frame.plate_waste_servings
+    waste = pd.to_numeric(frame.plate_waste_servings, errors="coerce")
     frame["observed_demand"] = prepared - leftover
     valid = (
         frame.shortage_occurred.eq(False) & frame.actual_people.gt(0)
-        & np.isfinite(frame.actual_people) & np.isfinite(frame.expected_people)
-        & frame.expected_people.gt(0) & np.isfinite(frame.default_servings_per_person)
+        & np.isfinite(frame.actual_people)
+        & np.isfinite(frame.default_servings_per_person)
         & frame.default_servings_per_person.gt(0)
         & np.isfinite(prepared) & np.isfinite(leftover) & leftover.ge(0) & prepared.ge(leftover)
-        & (waste.isna() | (np.isfinite(waste) & waste.ge(0) & waste.le(frame.observed_demand + 1e-9)))
+        & (frame.plate_waste_servings.isna() | (np.isfinite(waste) & waste.ge(0) & waste.le(frame.observed_demand + 1e-9)))
         & frame.serving_unit.isin(["serving", "piece"])
     )
     valid &= frame.serving_unit.ne("piece") | (
         prepared.mod(1).eq(0) & leftover.mod(1).eq(0) & (waste.isna() | waste.mod(1).eq(0))
     )
+    attendance = np.isfinite(frame.expected_people) & frame.expected_people.gt(0)
+    if keep_history_only:
+        frame.loc[~attendance, "expected_people"] = np.nan
+    else:
+        valid &= attendance
     return frame.loc[valid].dropna(subset=["meal_date", *INSTITUTIONAL_KEYS])
 
 
@@ -74,6 +80,8 @@ def fit_experiment(kind, records, *, source, synthetic, version):
     institutional = kind == "institutional"
     keys = INSTITUTIONAL_KEYS if institutional else RESTAURANT_KEYS
     features = temporal_features(records, keys, institutional=institutional, window_days=HISTORY_WINDOW_DAYS)
+    if institutional:
+        features = features.dropna(subset=["expected_people"])
     train, validation, test = chronological_split(features)
     categories, numbers = SCHEMAS[kind]
     pipeline = make_pipeline(
@@ -97,6 +105,7 @@ def fit_experiment(kind, records, *, source, synthetic, version):
         "supported_categories": {key: sorted(train[key].dropna().unique().tolist()) for key in categories},
         "target": "served_servings" if institutional else "sold_quantity",
         "training_records": len(train),
+        "evaluation_end_date": test.meal_date.max().date().isoformat(),
         "history_window_days": HISTORY_WINDOW_DAYS if institutional else None,
         "supported_quantity_units": sorted(train.serving_unit.unique().tolist()),
         "metrics": {"validation": evaluate(validation, validation_predictions),

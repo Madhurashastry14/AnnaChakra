@@ -1,5 +1,6 @@
 ﻿"""Lazy inference for approved institutional models and explicit demos."""
 import logging
+from datetime import date
 from functools import lru_cache
 from math import isfinite
 from pathlib import Path
@@ -45,6 +46,7 @@ def institutional_prediction(path, features, *, version=None, demo=False):
             metadata["experiment"] != "institutional"
             or metadata["is_synthetic"] is not demo
             or (version is not None and metadata["version"] != version)
+            or (not demo and features["meal_date"] <= date.fromisoformat(metadata["evaluation_end_date"]))
             or metadata["feature_schema"] != {"categorical": categories, "numerical": numbers}
             or metadata["history_window_days"] != features["history_window_days"]
             or features["serving_unit"] not in metadata["supported_quantity_units"]

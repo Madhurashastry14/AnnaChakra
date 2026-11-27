@@ -1,4 +1,4 @@
-﻿from datetime import timedelta
+﻿from datetime import date, timedelta
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -36,6 +36,7 @@ def _history(db, kitchen_id, request):
         .join(MealRecordItem, MealRecordItem.meal_record_id == MealRecord.id)
         .where(MealRecord.kitchen_id == kitchen_id, MealRecord.meal_type == request.meal_type,
                MealRecord.meal_date >= start, MealRecord.meal_date < request.meal_date,
+               MealRecord.meal_date <= date.today(),
                MealRecord.actual_people > 0, MealRecordItem.shortage_occurred.is_(False),
                MealRecordItem.food_item_id.in_(request.food_item_ids))
         .order_by(MealRecord.meal_date, MealRecord.id)
