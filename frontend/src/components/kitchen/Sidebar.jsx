@@ -5,7 +5,6 @@ import {
   CookingPot,
   Leaf,
   LogOut,
-  X,
 } from "lucide-react";
 import { VerificationBadge } from "../ui/Badge.jsx";
 import { KITCHEN_NAV_GROUPS, isNavActive } from "./navigation.js";
@@ -53,14 +52,6 @@ export default function Sidebar({
             <small>Kitchen workspace</small>
           </span>
         </Link>
-        <button
-          type="button"
-          className="k-icon-button k-sidebar-close"
-          aria-label="Close navigation"
-          onClick={onCloseMobile}
-        >
-          <X size={18} />
-        </button>
       </div>
 
       <div className="k-sidebar-kitchen">

@@ -3640,11 +3640,6 @@
     transform: translateX(0);
   }
 
-  .k-sidebar .k-sidebar-close {
-    display: grid;
-    color: #dce8d9;
-  }
-
   .k-sidebar-collapse {
     display: none;
   }
