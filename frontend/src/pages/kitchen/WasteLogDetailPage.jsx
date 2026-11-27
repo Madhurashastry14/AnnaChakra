@@ -19,7 +19,6 @@ import { Card, CardHeader } from "../../components/ui/Card.jsx";
 import { SafetyBadge } from "../../components/ui/Badge.jsx";
 import { EmptyState, ErrorState, LoadingSkeleton } from "../../components/ui/States.jsx";
 import AuthenticatedImage from "../../components/ui/AuthenticatedImage.jsx";
-import SafetyScreeningPanel from "../../components/ui/SafetyScreeningPanel.jsx";
 
 function imageSource(log) {
   if (log.image_url) return log.image_url;
@@ -232,15 +231,6 @@ export default function WasteLogDetailPage() {
         </Card>
       </div>
 
-      {!log.is_simulated ? <SafetyScreeningPanel
-        status={log.safety_status}
-        notes={log.safety_notes}
-        screenedAt={log.screened_at}
-        policyVersion={log.safety_policy_version}
-        safeUntil={log.safe_until}
-        availableServings={log.available_servings}
-        servingUnit={log.serving_unit}
-      /> : null}
     </>
   );
 }

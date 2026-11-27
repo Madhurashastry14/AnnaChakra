@@ -43,7 +43,6 @@ import {
 } from "../../components/ui/Form.jsx";
 import { EmptyState, ErrorState, LoadingSkeleton } from "../../components/ui/States.jsx";
 import { FoodSelect } from "../../components/kitchen/FoodSelectors.jsx";
-import SafetyScreeningPanel from "../../components/ui/SafetyScreeningPanel.jsx";
 import { useKitchen } from "../../components/kitchen/KitchenLayout.jsx";
 import { useToast } from "../../components/feedback/ToastProvider.jsx";
 
@@ -265,16 +264,6 @@ export default function WasteLogFormPage() {
               </div>
             </dl>
           </div>
-
-          {!result.is_simulated ? <SafetyScreeningPanel
-            status={result.safety_status}
-            notes={result.safety_notes}
-            screenedAt={result.screened_at}
-            policyVersion={result.safety_policy_version}
-            safeUntil={result.safe_until}
-            availableServings={result.available_servings}
-            servingUnit={result.serving_unit}
-          /> : null}
 
           {result.is_simulated && result.waste_type === "UNSERVED_SURPLUS" && result.safety_status === "INELIGIBLE" ? (
             <ul className="k-muted-text">{result.safety_notes.map((note) => <li key={note}>{note}</li>)}</ul>
