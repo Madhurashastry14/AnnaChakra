@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown, LogOut, Menu, Settings, UserRound } from "lucide-react";
+import { ChevronDown, LogOut, Menu, Settings } from "lucide-react";
 import { VerificationBadge } from "../ui/Badge.jsx";
 import { getPageMeta } from "./navigation.js";
 import { useAuth } from "../../auth/AuthContext.jsx";
@@ -94,9 +94,6 @@ export default function KitchenHeader({ kitchen, mobileOpen, onOpenMobile }) {
               </div>
               <Link to="/kitchen/settings" role="menuitem" className="k-user-dropdown-item">
                 <Settings size={15} /> Kitchen settings
-              </Link>
-              <Link to="/" role="menuitem" className="k-user-dropdown-item">
-                <UserRound size={15} /> View public site
               </Link>
               <button type="button" role="menuitem" className="k-user-dropdown-item is-danger" onClick={handleLogout}>
                 <LogOut size={15} /> Sign out

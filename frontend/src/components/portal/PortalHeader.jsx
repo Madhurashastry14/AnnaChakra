@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown, LogOut, Menu, Settings, UserRound } from "lucide-react";
+import { ChevronDown, LogOut, Menu, Settings } from "lucide-react";
 import { VerificationBadge } from "../ui/Badge.jsx";
 import { useAuth } from "../../auth/AuthContext.jsx";
 import { labelFor } from "../../utils/format.js";
@@ -100,9 +100,6 @@ export default function PortalHeader({
                   <Settings size={15} /> Organization profile
                 </Link>
               ) : null}
-              <Link to="/" role="menuitem" className="k-user-dropdown-item">
-                <UserRound size={15} /> View public site
-              </Link>
               <button type="button" role="menuitem" className="k-user-dropdown-item is-danger" onClick={handleLogout}>
                 <LogOut size={15} /> Sign out
               </button>
