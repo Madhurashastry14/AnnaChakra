@@ -24,7 +24,11 @@ import PageHeader from "../../components/ui/PageHeader.jsx";
 import Button from "../../components/ui/Button.jsx";
 import { Card } from "../../components/ui/Card.jsx";
 import { Badge } from "../../components/ui/Badge.jsx";
-import { EmptyState, ErrorState, LoadingSkeleton } from "../../components/ui/States.jsx";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingSkeleton,
+} from "../../components/ui/States.jsx";
 import { SelectInput, TextInput } from "../../components/ui/Form.jsx";
 import { FoodSelect } from "../../components/kitchen/FoodSelectors.jsx";
 
@@ -46,13 +50,16 @@ export default function PortionRecommendationsPage() {
 
   useEffect(() => {
     let active = true;
-    Promise.allSettled([listFoodItems({ limit: 100 }), listForecasts()]).then((results) => {
-      if (!active) return;
-      if (results[0].status === "fulfilled") setFoods(results[0].value.items ?? []);
-      if (results[1].status === "fulfilled") {
-        setForecasts(Array.isArray(results[1].value) ? results[1].value : []);
-      }
-    });
+    Promise.allSettled([listFoodItems({ limit: 100 }), listForecasts()]).then(
+      (results) => {
+        if (!active) return;
+        if (results[0].status === "fulfilled")
+          setFoods(results[0].value.items ?? []);
+        if (results[1].status === "fulfilled") {
+          setForecasts(Array.isArray(results[1].value) ? results[1].value : []);
+        }
+      },
+    );
     return () => {
       active = false;
     };
@@ -67,7 +74,8 @@ export default function PortionRecommendationsPage() {
     for (const key of ["start_date", "end_date", "meal_type", "food_item_id"]) {
       if (filters[key]) params[key] = filters[key];
     }
-    if (filters.menu_mode && filters.menu_mode !== "LEGACY") params.menu_mode = filters.menu_mode;
+    if (filters.menu_mode && filters.menu_mode !== "LEGACY")
+      params.menu_mode = filters.menu_mode;
     if (filters.forecast_id) params.forecast_id = filters.forecast_id;
 
     getPortionRecommendations(params)
@@ -80,7 +88,13 @@ export default function PortionRecommendationsPage() {
         setData({ ...result, recommendations });
       })
       .catch((requestError) => {
-        if (active) setError(getErrorMessage(requestError, "We couldn’t load portion recommendations."));
+        if (active)
+          setError(
+            getErrorMessage(
+              requestError,
+              "We couldn’t load portion recommendations.",
+            ),
+          );
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -92,7 +106,10 @@ export default function PortionRecommendationsPage() {
   }, [filters, reloadKey]);
 
   const selectedForecast = useMemo(
-    () => forecasts.find((forecast) => String(forecast.id) === String(filters.forecast_id)) ?? null,
+    () =>
+      forecasts.find(
+        (forecast) => String(forecast.id) === String(filters.forecast_id),
+      ) ?? null,
     [forecasts, filters.forecast_id],
   );
 
@@ -147,7 +164,10 @@ export default function PortionRecommendationsPage() {
               value={filters.meal_type}
               onChange={(event) => setFilter("meal_type", event.target.value)}
               placeholder="All meals"
-              options={MEAL_TYPES.map((value) => ({ value, label: mealTypeLabel(value) }))}
+              options={MEAL_TYPES.map((value) => ({
+                value,
+                label: mealTypeLabel(value),
+              }))}
             />
             <SelectInput
               label="Menu mode"
@@ -182,10 +202,18 @@ export default function PortionRecommendationsPage() {
           </div>
           <div className="k-filter-actions">
             <span className="k-muted-text">
-              {recommendations.length} {recommendations.length === 1 ? "recommendation" : "recommendations"}
+              {recommendations.length}{" "}
+              {recommendations.length === 1
+                ? "recommendation"
+                : "recommendations"}
             </span>
             {hasFilters ? (
-              <Button variant="ghost" size="sm" icon={Filter} onClick={resetFilters}>
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={Filter}
+                onClick={resetFilters}
+              >
                 Clear filters
               </Button>
             ) : null}
@@ -198,15 +226,18 @@ export default function PortionRecommendationsPage() {
         <div>
           <strong>Per-attendee quantities respect the serving unit</strong>
           <p>
-            For serving-based foods, per-attendee figures are servings per attendee. For
-            piece-based foods, they are pieces per attendee. The two are never combined.
-            Recommendations are advisory and do not override your kitchen’s judgement.
+            For serving-based foods, per-attendee figures are servings per
+            attendee. For piece-based foods, they are pieces per attendee. The
+            two are never combined. Recommendations are advisory and do not
+            override your kitchen’s judgement.
           </p>
           {selectedForecast ? (
             <p className="k-callout-meta">
-              <Users size={14} aria-hidden="true" /> Forecast #{selectedForecast.id} ·{" "}
-              {formatDate(selectedForecast.meal_date)} · {mealTypeLabel(selectedForecast.meal_type)} ·{" "}
-              {formatNumber(selectedForecast.expected_people, 0)} expected diners
+              <Users size={14} aria-hidden="true" /> Forecast #
+              {selectedForecast.id} · {formatDate(selectedForecast.meal_date)} ·{" "}
+              {mealTypeLabel(selectedForecast.meal_type)} ·{" "}
+              {formatNumber(selectedForecast.expected_people, 0)} expected
+              diners
             </p>
           ) : null}
         </div>
@@ -215,7 +246,10 @@ export default function PortionRecommendationsPage() {
       {loading ? (
         <LoadingSkeleton variant="page" />
       ) : error ? (
-        <ErrorState message={error} onRetry={() => setReloadKey((key) => key + 1)} />
+        <ErrorState
+          message={error}
+          onRetry={() => setReloadKey((key) => key + 1)}
+        />
       ) : recommendations.length === 0 ? (
         <EmptyState
           icon={Scale}
@@ -226,13 +260,22 @@ export default function PortionRecommendationsPage() {
       ) : (
         <div className="k-recommendation-grid">
           {recommendations.map((recommendation) => (
-            <article className="k-recommendation-card" key={recommendation.food_item_id}>
+            <article
+              className="k-recommendation-card"
+              key={recommendation.food_item_id}
+            >
               <header className="k-recommendation-head">
                 <div>
                   <h2>{recommendation.food_item_name}</h2>
-                  <Badge tone="outline">{unitLabel(recommendation.serving_unit)}</Badge>
+                  <Badge tone="outline">
+                    {unitLabel(recommendation.serving_unit)}
+                  </Badge>
                 </div>
-                <Badge tone={recommendation.records_analyzed > 0 ? "info" : "neutral"}>
+                <Badge
+                  tone={
+                    recommendation.records_analyzed > 0 ? "info" : "neutral"
+                  }
+                >
                   {recommendation.records_analyzed > 0
                     ? `${recommendation.records_analyzed} records`
                     : "Catalogue only"}
@@ -267,27 +310,15 @@ export default function PortionRecommendationsPage() {
                   <dt>Uncensored records</dt>
                   <dd>{formatNumber(recommendation.uncensored_records, 0)}</dd>
                 </div>
-                <div>
-                  <dt>Expected attendees</dt>
-                  <dd>
-                    {recommendation.expected_people === null
-                      ? "—"
-                      : formatNumber(recommendation.expected_people, 0)}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Forecast preparation</dt>
-                  <dd>
-                    {recommendation.forecast_preparation_quantity === null
-                      ? "—"
-                      : `${formatNumber(recommendation.forecast_preparation_quantity, 0)} ${unitLabel(recommendation.serving_unit)}`}
-                  </dd>
-                </div>
+
                 <div>
                   <dt>Plate-waste coverage</dt>
                   <dd>
                     {recommendation.observed_metrics
-                      ? percent(recommendation.observed_metrics.plate_waste_measurement_coverage)
+                      ? percent(
+                          recommendation.observed_metrics
+                            .plate_waste_measurement_coverage,
+                        )
                       : "—"}
                   </dd>
                 </div>
@@ -297,19 +328,28 @@ export default function PortionRecommendationsPage() {
                 <dl className="k-stat-grid k-stat-grid-compact k-recommendation-rates">
                   <div>
                     <dt>Overproduction</dt>
-                    <dd>{percent(recommendation.observed_metrics.overproduction_rate)}</dd>
+                    <dd>
+                      {percent(
+                        recommendation.observed_metrics.overproduction_rate,
+                      )}
+                    </dd>
                   </div>
                   <div>
                     <dt>Plate waste</dt>
-                    <dd>{percent(recommendation.observed_metrics.plate_waste_rate)}</dd>
+                    <dd>
+                      {percent(
+                        recommendation.observed_metrics.plate_waste_rate,
+                      )}
+                    </dd>
                   </div>
-                  <div>
-                    <dt>Acceptance proxy</dt>
-                    <dd>{percent(recommendation.observed_metrics.food_acceptance_rate)}</dd>
-                  </div>
+
                   <div>
                     <dt>Shortage frequency</dt>
-                    <dd>{percent(recommendation.observed_metrics.shortage_frequency)}</dd>
+                    <dd>
+                      {percent(
+                        recommendation.observed_metrics.shortage_frequency,
+                      )}
+                    </dd>
                   </div>
                 </dl>
               ) : null}
@@ -340,8 +380,9 @@ export default function PortionRecommendationsPage() {
       <p className="k-page-footer-note">
         <Info size={14} aria-hidden="true" />
         <span>
-          “Catalogue only” means no usable kitchen history contributed to the recommendation.
-          Missing or censored observations are reported, not filled in.
+          “Catalogue only” means no usable kitchen history contributed to the
+          recommendation. Missing or censored observations are reported, not
+          filled in.
         </span>
       </p>
     </>

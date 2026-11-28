@@ -9,7 +9,6 @@ import {
   Trash2,
   TrendingUp,
   Truck,
-  Search,
 } from "lucide-react";
 
 export const KITCHEN_NAV_GROUPS = [
@@ -27,7 +26,6 @@ export const KITCHEN_NAV_GROUPS = [
       { to: "/kitchen/scanner", label: "AI Food Scanner", icon: ScanLine },
       { to: "/kitchen/waste-logs", label: "Leftover Logs", icon: Trash2 },
       { to: "/kitchen/surplus", label: "Available Surplus", icon: HandHeart },
-      { to: "/kitchen/matching", label: "Find an NGO", icon: Search },
     ],
   },
   {
