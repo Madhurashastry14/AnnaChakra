@@ -62,7 +62,7 @@ class MatchRequest(StrictBody):
     def validate_items(self):
         ids = self.waste_log_ids or [item.waste_log_id for item in self.items]
         if not ids or (self.waste_log_ids and self.items) or len(ids) != len(set(ids)):
-            raise ValueError("Provide unique waste log IDs or unique items")
+            raise ValueError("Provide unique leftover log IDs or unique items")
         return self
 
 
@@ -74,7 +74,7 @@ class OfferRequest(StrictBody):
     @model_validator(mode="after")
     def distinct_batches(self):
         if len({line.waste_log_id for line in self.items}) != len(self.items):
-            raise ValueError("Waste log IDs must be unique")
+            raise ValueError("Leftover log IDs must be unique")
         return self
 
 

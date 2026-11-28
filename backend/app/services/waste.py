@@ -32,7 +32,7 @@ def owned_waste(db, kitchen_id, waste_id, *, lock=False):
     query = select(WasteLog).where(WasteLog.kitchen_id == kitchen_id, WasteLog.id == waste_id)
     row = db.scalar(query.with_for_update() if lock else query)
     if row is None:
-        raise HTTPException(404, "Waste log not found")
+        raise HTTPException(404, "Leftover log not found")
     return row
 
 
@@ -102,7 +102,7 @@ def _validate_image_accounting(db, prediction, kitchen_id, current):
     if current is not None:
         query = query.where(WasteLog.id != current.id)
     if db.scalar(query.limit(1)) is not None:
-        raise HTTPException(409, "This image already supports a waste log. Edit that log instead.")
+        raise HTTPException(409, "This image already supports a leftover log. Edit that log instead.")
 
 
 def response_values(row):
@@ -225,7 +225,7 @@ def save_waste(db, kitchen, request, current=None):
                      "meal_record_item_id", "prediction_id"}
         if any(values[key] != previous[key] for key in protected):
             if _donation_allocations(db, current.id):
-                raise HTTPException(409, "An existing donation protects this waste log from operational edits")
+                raise HTTPException(409, "An existing donation protects this leftover log from operational edits")
     prediction = (owned_prediction(db, kitchen_id, request.prediction_id, lock=True)
                   if request.prediction_id else None)
     if prediction is not None:
@@ -270,5 +270,5 @@ def patch_waste(db, kitchen, current, patch):
     try:
         request = WasteRequest.model_validate(previous | edits)
     except ValidationError as exc:
-        raise HTTPException(422, "Invalid waste log update") from exc
+        raise HTTPException(422, "Invalid leftover log update") from exc
     return save_waste(db, kitchen, request, current)

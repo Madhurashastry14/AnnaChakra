@@ -89,7 +89,7 @@ export default function WasteLogsPage() {
         if (active) setLogs(Array.isArray(data) ? data : []);
       })
       .catch((requestError) => {
-        if (active) setError(getErrorMessage(requestError, "We couldn’t load waste logs."));
+        if (active) setError(getErrorMessage(requestError, "We couldn’t load leftover logs."));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -134,14 +134,14 @@ export default function WasteLogsPage() {
     <>
       <PageHeader
         eyebrow="OPERATIONS"
-        title="Waste logs"
+        title="Leftover logs"
         description="Recorded surplus, plate waste and spoiled food. View redistribution availability and remaining loggable quantities."
         actions={
           <>
             <Button variant="secondary" to="/kitchen/scanner" icon={ImageOff}>
               Scan food
             </Button>
-            <Button to="/kitchen/waste-logs/new" icon={Plus}>Log waste</Button>
+            <Button to="/kitchen/waste-logs/new" icon={Plus}>Log leftovers</Button>
           </>
         }
       />
@@ -208,7 +208,7 @@ export default function WasteLogsPage() {
                   render: (row) => (
                     <AuthenticatedImage
                       src={imageSource(row)}
-                      alt={`Waste log ${row.id}`}
+                      alt={`Leftover log ${row.id}`}
                       className="k-table-thumb"
                       fallback={<span className="k-table-thumb k-table-thumb-empty"><ImageOff size={15} /></span>}
                     />
@@ -267,7 +267,7 @@ export default function WasteLogsPage() {
               empty={
                 <EmptyState
                   icon={Trash2}
-                  title={hasFilters ? "No waste logs match these filters" : "No waste logs yet"}
+                  title={hasFilters ? "No leftover logs match these filters" : "No leftover logs yet"}
                   description={
                     hasFilters
                       ? "Try a different waste type, food or date range."
@@ -277,7 +277,7 @@ export default function WasteLogsPage() {
                     hasFilters ? (
                       <Button variant="secondary" onClick={resetFilters}>Clear filters</Button>
                     ) : (
-                      <Button to="/kitchen/waste-logs/new" icon={Plus}>Log waste</Button>
+                      <Button to="/kitchen/waste-logs/new" icon={Plus}>Log leftovers</Button>
                     )
                   }
                 />
@@ -308,7 +308,7 @@ export default function WasteLogsPage() {
         <CalendarDays size={14} aria-hidden="true" />
         <span>
           Filters use the log creation time. Meal-record surplus quantities are limited by the
-          backend, so use the “Log waste” actions from a meal record when logging recorded leftovers.
+          backend, so use the “Log leftovers” actions from a meal record when logging recorded leftovers.
         </span>
       </p>
     </>

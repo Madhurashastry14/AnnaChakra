@@ -37,7 +37,7 @@ def write(db, action, *args):
     except SQLAlchemyError as exc:
         db.rollback()
         logger.error("Waste log transaction failed (%s)", type(exc).__name__)
-        raise HTTPException(500, "Unable to save waste log") from exc
+        raise HTTPException(500, "Unable to save leftover log") from exc
 
 
 @router.post("", status_code=201, response_model=WasteResponse)

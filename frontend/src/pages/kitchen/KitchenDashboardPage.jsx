@@ -234,7 +234,7 @@ export default function KitchenDashboardPage() {
     const names = {
       forecasts: "forecasts",
       meals: "meal records",
-      waste: "waste logs",
+      waste: "leftover logs",
       summary: "waste analytics",
       insights: "waste insights",
       availableSurplus: "available surplus",
@@ -261,7 +261,7 @@ export default function KitchenDashboardPage() {
     { to: "/kitchen/forecast", label: "Plan a meal", icon: TrendingUp },
     { to: "/kitchen/meal-records/new", label: "Record meal feedback", icon: ClipboardList },
     { to: "/kitchen/scanner", label: "Scan food", icon: ScanLine },
-    { to: "/kitchen/waste-logs/new", label: "Log waste", icon: Trash2 },
+    { to: "/kitchen/waste-logs/new", label: "Log leftovers", icon: Trash2 },
   ];
 
   return (
@@ -647,7 +647,7 @@ export default function KitchenDashboardPage() {
         <Card>
           <CardHeader
             icon={Trash2}
-            title="Recent waste logs"
+            title="Recent leftover logs"
             subtitle="Newest logged surplus, plate waste and spoiled food."
             action={<Button size="sm" variant="ghost" to="/kitchen/waste-logs">View all <ArrowRight size={14} /></Button>}
           />
@@ -674,9 +674,9 @@ export default function KitchenDashboardPage() {
               empty={
                 <EmptyState
                   icon={Trash2}
-                  title="No waste logs yet"
+                  title="No leftover logs yet"
                   description="Log surplus or plate waste to start building waste intelligence."
-                  action={<Button size="sm" to="/kitchen/waste-logs/new">Log waste</Button>}
+                  action={<Button size="sm" to="/kitchen/waste-logs/new">Log leftovers</Button>}
                   className="k-empty-compact"
                 />
               }

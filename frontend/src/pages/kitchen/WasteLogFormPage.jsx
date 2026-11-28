@@ -129,7 +129,7 @@ export default function WasteLogFormPage() {
       .catch((error) => {
         if (!active) return;
         if (isNotFound(error)) setNotFound(true);
-        else setLoadError(getErrorMessage(error, "We couldn’t load this waste log."));
+        else setLoadError(getErrorMessage(error, "We couldn’t load this leftover log."));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -165,7 +165,7 @@ export default function WasteLogFormPage() {
     try {
       const payload = buildWastePayload(form, { includeCleared: editing, simulated });
       const saved = editing ? await updateWasteLog(id, payload) : await createWasteLog(payload);
-      notify(editing ? "Waste log updated." : "Waste log recorded.");
+      notify(editing ? "Leftover log updated." : "Leftover log recorded.");
       if (saved.is_simulated && saved.available_servings > 0) {
         navigate(`/kitchen/matching?waste_log_id=${saved.id}`);
       } else if (editing) {
@@ -174,7 +174,7 @@ export default function WasteLogFormPage() {
         setResult(saved);
       }
     } catch (error) {
-      setSubmitError(getErrorMessage(error, editing ? "We couldn’t update the waste log." : "We couldn’t save the waste log."));
+      setSubmitError(getErrorMessage(error, editing ? "We couldn’t update the leftover log." : "We couldn’t save the leftover log."));
     } finally {
       setSubmitting(false);
     }
@@ -185,9 +185,9 @@ export default function WasteLogFormPage() {
       <>
         <PageHeader
           eyebrow="OPERATIONS"
-          title="Edit waste log"
+          title="Edit leftover log"
           backTo="/kitchen/waste-logs"
-          backLabel="Waste logs"
+          backLabel="Leftover logs"
         />
         <LoadingSkeleton rows={6} />
       </>
@@ -199,15 +199,15 @@ export default function WasteLogFormPage() {
       <>
         <PageHeader
           eyebrow="OPERATIONS"
-          title="Waste log not found"
+          title="Leftover log not found"
           backTo="/kitchen/waste-logs"
-          backLabel="Waste logs"
+          backLabel="Leftover logs"
         />
         <EmptyState
           icon={Trash2}
-          title="Waste log not found"
+          title="Leftover log not found"
           description="This log does not exist for your kitchen, or it may have been removed."
-          action={<Button to="/kitchen/waste-logs">Back to waste logs</Button>}
+          action={<Button to="/kitchen/waste-logs">Back to leftover logs</Button>}
         />
       </>
     );
@@ -218,9 +218,9 @@ export default function WasteLogFormPage() {
       <>
         <PageHeader
           eyebrow="OPERATIONS"
-          title="Edit waste log"
+          title="Edit leftover log"
           backTo="/kitchen/waste-logs"
-          backLabel="Waste logs"
+          backLabel="Leftover logs"
         />
         <ErrorState message={loadError} />
       </>
@@ -232,14 +232,14 @@ export default function WasteLogFormPage() {
       <>
         <PageHeader
           eyebrow="OPERATIONS"
-          title="Waste log recorded"
+          title="Leftover log recorded"
           backTo="/kitchen/waste-logs"
-          backLabel="Waste logs"
+          backLabel="Leftover logs"
         />
         <div ref={resultRef} className="k-result-wrap">
           <div className="k-result-hero">
             <div className="k-result-hero-main">
-              <p className="k-eyebrow">WASTE LOG #{result.id}</p>
+              <p className="k-eyebrow">LEFTOVER LOG #{result.id}</p>
               <h2>{result.food_name}</h2>
               <p>
                 {wasteTypeLabel(result.waste_type)} ·{" "}
@@ -269,7 +269,7 @@ export default function WasteLogFormPage() {
 
           <div className="k-result-actions">
             <Button to={`/kitchen/waste-logs/${result.id}`} icon={ArrowRight}>
-              Open waste log
+              Open leftover log
             </Button>
             <Button
               variant="secondary"
@@ -294,10 +294,10 @@ export default function WasteLogFormPage() {
     <>
       <PageHeader
         eyebrow="OPERATIONS"
-        title={editing ? `Edit waste log #${id}` : "Log waste"}
+        title={editing ? `Edit leftover log #${id}` : "Log leftovers"}
         description="Record unserved surplus, plate waste or spoiled food."
         backTo={editing ? `/kitchen/waste-logs/${id}` : "/kitchen/waste-logs"}
-        backLabel={editing ? "Waste log detail" : "Waste logs"}
+        backLabel={editing ? "Leftover log detail" : "Leftover logs"}
         actions={
           !editing ? (
             <Button variant="secondary" to="/kitchen/scanner" icon={ScanLine}>
@@ -444,7 +444,7 @@ export default function WasteLogFormPage() {
 
         <div className="k-form-actions">
           <Button type="submit" icon={Save} loading={submitting} disabled={!foods}>
-            {editing ? "Save changes" : "Record waste log"}
+            {editing ? "Save changes" : "Record leftover log"}
           </Button>
           <Button
             variant="secondary"

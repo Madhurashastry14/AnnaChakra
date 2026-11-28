@@ -61,7 +61,7 @@ export default function SurplusPage() {
       <PageHeader
         eyebrow="REDISTRIBUTION"
         title="Available surplus"
-        actions={<Button variant="secondary" to="/kitchen/waste-logs" icon={Trash2}>Waste logs</Button>}
+        actions={<Button variant="secondary" to="/kitchen/waste-logs" icon={Trash2}>Leftover logs</Button>}
       />
       {error ? (
         <ErrorState message={error} onRetry={() => setReloadKey((key) => key + 1)} />

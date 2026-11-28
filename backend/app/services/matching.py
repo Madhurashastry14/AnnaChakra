@@ -1,4 +1,4 @@
-﻿"""Read-only, unit-aware matching of presently eligible surplus."""
+"""Read-only, unit-aware matching of presently eligible surplus."""
 from dataclasses import dataclass
 from datetime import timedelta
 from decimal import Decimal
@@ -88,7 +88,7 @@ def read_surplus(db, kitchen, ids=None, *, now=None, lock=False, strict=False, e
                             WasteLog.confirmed_servings > 0)
     rows = db.execute(query.with_for_update(of=WasteLog) if lock else query).all()
     if ids is not None and len(rows) != len(ids):
-        raise HTTPException(404, "Waste log not found")
+        raise HTTPException(404, "Leftover log not found")
     surplus = []
     for waste, food in rows:
         if waste.is_simulated != kitchen.is_simulated:
@@ -108,7 +108,7 @@ def read_surplus(db, kitchen, ids=None, *, now=None, lock=False, strict=False, e
                 continue
             reason = "No unreserved quantity remains."
         if strict:
-            raise HTTPException(409, f"Waste log {waste.id}: {reason}")
+            raise HTTPException(409, f"Leftover log {waste.id}: {reason}")
         if exclusions is not None:
             exclusions.append({"waste_log_id": waste.id, "food_name": food.name, "reasons": [reason]})
     return surplus

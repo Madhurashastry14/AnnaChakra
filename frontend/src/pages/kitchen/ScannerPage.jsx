@@ -245,7 +245,7 @@ export default function ScannerPage() {
         description="Photograph food to get a classification suggestion and, where supported, an experimental piece count. Always review and confirm before logging waste."
         actions={
           <Button variant="secondary" to="/kitchen/waste-logs" icon={Trash2}>
-            Waste logs
+            Leftover logs
           </Button>
         }
       />
@@ -305,7 +305,7 @@ export default function ScannerPage() {
             <h2>Safety stays separate</h2>
             <p>
               Redistribution eligibility is screened from the food-safety facts you record in
-              the waste log. The scanner never marks food safe or unsafe.
+              the leftover log. The scanner never marks food safe or unsafe.
             </p>
           </section>
           <section className="k-planner-info">
@@ -493,7 +493,7 @@ export default function ScannerPage() {
                   Recount selected food
                 </Button>
                 <Button icon={ArrowRight} onClick={handoffToWaste} disabled={!selectedFoodId || recounting}>
-                  Continue to waste log
+                  Continue to leftover log
                 </Button>
                 <Button variant="ghost" onClick={clearImage} disabled={recounting}>
                   Discard scan
@@ -503,7 +503,7 @@ export default function ScannerPage() {
 
               <p className="k-note">
                 <Info size={14} aria-hidden="true" />
-                The waste log will ask for food-safety facts separately. Nothing is logged until
+                The leftover log will ask for food-safety facts separately. Nothing is logged until
                 you submit that form.
               </p>
             </div>
@@ -518,7 +518,7 @@ export default function ScannerPage() {
           description="Add a photo and analyse it to see the prediction, counting status and quantity confirmation."
           action={
             <Link className="k-text-link" to="/kitchen/waste-logs/new">
-              Or log waste manually
+              Or log leftovers manually
             </Link>
           }
         />

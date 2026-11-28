@@ -113,7 +113,7 @@ def create_offer(db, kitchen_id, request):
     held = db.scalars(select(WasteLog.id).where(WasteLog.id.in_(ids), WasteLog.kitchen_id == kitchen.id)
                       .order_by(WasteLog.id).with_for_update()).all()
     if len(held) != len(ids):
-        raise HTTPException(404, "Waste log not found")
+        raise HTTPException(404, "Leftover log not found")
     now = now_utc()
     if not requirement_open(requirement, now):
         raise HTTPException(409, "Requirement is not accepting offers")
@@ -177,7 +177,7 @@ def recheck(db, donation, *, accepting=False, travel=True, selected_line_ids=Non
         check = redistribution_check(waste, food, kitchen, now)
         if (check.status != SafetyStatus.ELIGIBLE or check.safe_until is None
                 or now + eta >= check.safe_until or not compatible(food, requirement)):
-            raise HTTPException(409, f"Waste log {waste.id} failed current safety or dietary checks")
+            raise HTTPException(409, f"Leftover log {waste.id} failed current safety or dietary checks")
     return kitchen, lines, now
 
 

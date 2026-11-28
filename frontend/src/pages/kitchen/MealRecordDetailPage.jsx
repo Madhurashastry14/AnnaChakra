@@ -255,7 +255,7 @@ export default function MealRecordDetailPage() {
               <p className="k-note">
                 <Info size={14} aria-hidden="true" />
                 Remaining quantities below come directly from the backend. They are not recalculated
-                in this interface, so waste logging stays within the allowed limits.
+                in this interface, so leftover logging stays within the allowed limits.
               </p>
               <div className="k-waste-summary-list">
                 {summary.items.map((item) => (
@@ -268,7 +268,7 @@ export default function MealRecordDetailPage() {
                       <div className="k-waste-summary-links">
                         {item.waste_log_ids?.map((wasteId) => (
                           <Link key={wasteId} className="k-table-link" to={`/kitchen/waste-logs/${wasteId}`}>
-                            Waste log #{wasteId}
+                            Leftover log #{wasteId}
                           </Link>
                         ))}
                       </div>

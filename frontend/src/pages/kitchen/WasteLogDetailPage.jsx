@@ -48,7 +48,7 @@ export default function WasteLogDetailPage() {
       .catch((requestError) => {
         if (!active) return;
         if (isNotFound(requestError)) setNotFound(true);
-        else setError(getErrorMessage(requestError, "We couldn’t load this waste log."));
+        else setError(getErrorMessage(requestError, "We couldn’t load this leftover log."));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -62,7 +62,7 @@ export default function WasteLogDetailPage() {
   if (loading) {
     return (
       <>
-        <PageHeader eyebrow="OPERATIONS" title="Waste log" backTo="/kitchen/waste-logs" backLabel="Waste logs" />
+        <PageHeader eyebrow="OPERATIONS" title="Leftover log" backTo="/kitchen/waste-logs" backLabel="Leftover logs" />
         <LoadingSkeleton variant="page" />
       </>
     );
@@ -71,12 +71,12 @@ export default function WasteLogDetailPage() {
   if (notFound) {
     return (
       <>
-        <PageHeader eyebrow="OPERATIONS" title="Waste log" backTo="/kitchen/waste-logs" backLabel="Waste logs" />
+        <PageHeader eyebrow="OPERATIONS" title="Leftover log" backTo="/kitchen/waste-logs" backLabel="Leftover logs" />
         <EmptyState
           icon={Trash2}
-          title="Waste log not found"
+          title="Leftover log not found"
           description="This log does not exist for your kitchen, or it may have been removed."
-          action={<Button to="/kitchen/waste-logs">Back to waste logs</Button>}
+          action={<Button to="/kitchen/waste-logs">Back to leftover logs</Button>}
         />
       </>
     );
@@ -85,7 +85,7 @@ export default function WasteLogDetailPage() {
   if (error || !log) {
     return (
       <>
-        <PageHeader eyebrow="OPERATIONS" title="Waste log" backTo="/kitchen/waste-logs" backLabel="Waste logs" />
+        <PageHeader eyebrow="OPERATIONS" title="Leftover log" backTo="/kitchen/waste-logs" backLabel="Leftover logs" />
         <ErrorState message={error} onRetry={() => setReloadKey((key) => key + 1)} />
       </>
     );
@@ -95,16 +95,16 @@ export default function WasteLogDetailPage() {
     <>
       <PageHeader
         eyebrow="OPERATIONS"
-        title={`Waste log #${log.id}`}
+        title={`Leftover log #${log.id}`}
         description={`${wasteTypeLabel(log.waste_type)} · ${formatDateTime(log.created_at)}`}
         backTo="/kitchen/waste-logs"
-        backLabel="Waste logs"
+        backLabel="Leftover logs"
         actions={
           <>
             <Button variant="secondary" to={`/kitchen/waste-logs/${log.id}/edit`} icon={Edit3}>
               Edit log
             </Button>
-            <Button to="/kitchen/waste-logs/new" icon={Trash2}>Log waste</Button>
+            <Button to="/kitchen/waste-logs/new" icon={Trash2}>Log leftovers</Button>
           </>
         }
       />
@@ -215,14 +215,14 @@ export default function WasteLogDetailPage() {
             {imageSource(log) ? (
               <AuthenticatedImage
                 src={imageSource(log)}
-                alt={`Scanner image for waste log ${log.id}`}
+                alt={`Scanner image for leftover log ${log.id}`}
                 className="k-detail-image"
               />
             ) : (
               <EmptyState
                 icon={ImageOff}
                 title="No scanner image"
-                description="This waste log was recorded manually."
+                description="This leftover log was recorded manually."
                 className="k-empty-compact"
               />
             )}
