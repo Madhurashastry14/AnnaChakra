@@ -710,6 +710,24 @@
   transform: none;
 }
 
+.k-btn-primary {
+  color: var(--k-green-dark);
+  background: #dcebd9;
+  border-color: #739572;
+}
+
+.k-btn-primary:hover {
+  background: #c9dfc4;
+  border-color: var(--k-green-mid);
+}
+
+.k-btn-primary:disabled {
+  opacity: 1;
+  color: #53665b;
+  background: #eef2ec;
+  border-color: var(--k-line-strong);
+}
+
 .k-btn-secondary {
   color: var(--k-green);
   background: var(--k-paper);
