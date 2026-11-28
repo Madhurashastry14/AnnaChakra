@@ -14,10 +14,10 @@ from app.main import app
 from app.models.donation import Donation
 from app.models.enums import UserRole
 from app.models.food import FoodItem
-from app.models.organization import DeliveryPersonnel, Kitchen, NGO
+from app.models.organization import DeliveryPersonnel, Kitchen, NGO, NGORequirement
 from app.models.user import User
 from app.models.waste import WasteLog
-from app.services.matching import haversine, score_match
+from app.services.matching import distance_between, haversine, score_match, travel_minutes
 from app.services.ngo_requirements import local_date
 from app.services.safety import SafetyPolicy
 from test_forecasts import sqlite_jsonb
@@ -141,6 +141,10 @@ def test_requirement_ownership_diet_and_matches(redistribution):
     assert candidate["suggested_allocation"][0]["offered_servings"] == 15
     assert candidate["score_components"]["compatibility"] == 50
     assert 0 <= candidate["match_score"] <= 100
+    excluded = next(row for row in matches["exclusions"] if row["requirement_id"] == capacity_only_servings["id"])
+    assert excluded["batches"][0]["reasons"] == ["No remaining piece capacity."]
+    assert matches["unavailable_batches"][0]["reasons"] == ["Plate waste cannot be redistributed."]
+    assert any(row["requirement_id"] is None for row in matches["exclusions"])
     assert client.post("/api/v1/matches", json={"waste_log_ids": [1, 1]}).status_code == 422
     assert offer(client, req["id"], 1.5).status_code == 422
     assert offer(client, req["id"], waste_log_id=2).status_code == 409
@@ -149,7 +153,48 @@ def test_requirement_ownership_diet_and_matches(redistribution):
         ngo = db.get(NGO, 1)
         ngo.verification_status = "PENDING"
         db.commit()
-    assert client.post("/api/v1/matches", json={"waste_log_ids": [1]}).json()["total"] == 0
+    result = client.post("/api/v1/matches", json={"waste_log_ids": [1]}).json()
+    assert result["total"] == 0
+    assert "NGO verification is pending." in result["exclusions"][0]["reasons"]
+
+
+def test_match_availability_at_local_midnight_and_delivery_cutoff(redistribution, monkeypatch):
+    client, actor, engine, _ = redistribution
+    req = requirement(client, actor)
+    monkeypatch.setattr(settings, "REDISTRIBUTION_TIMEZONE", "Asia/Kolkata")
+    now = datetime(2030, 1, 1, 18, 30, tzinfo=timezone.utc)
+    monkeypatch.setattr("app.services.matching.now_utc", lambda: now)
+    with Session(engine) as db:
+        kitchen, ngo = db.get(Kitchen, 1), db.get(NGO, 1)
+        arrival = now + timedelta(minutes=travel_minutes(distance_between(kitchen, ngo)))
+        row = db.get(NGORequirement, req["id"])
+        row.required_date = local_date(now)
+        row.available_until = arrival
+        db.commit()
+    response = client.post("/api/v1/matches", json={"waste_log_ids": [1]}).json()
+    assert response["total"] == 0
+    assert response["exclusions"][0]["reasons"][0].startswith("Estimated delivery takes")
+    with Session(engine) as db:
+        db.get(NGORequirement, req["id"]).available_until = arrival + timedelta(seconds=1)
+        db.commit()
+    response = client.post("/api/v1/matches", json={"waste_log_ids": [1]}).json()
+    assert response["total"] == 1
+
+
+def test_exact_food_restriction_applies_to_matches_and_offers(redistribution):
+    client, actor, engine, _ = redistribution
+    req = requirement(client, actor, accepted_categories=["  CHAPATI  "])
+    with Session(engine) as db:
+        other = FoodItem(name="Roti", category="bread", serving_unit="piece", is_vegetarian=True,
+                         default_servings_per_person=1)
+        db.add(other)
+        db.flush()
+        db.get(WasteLog, 3).food_item_id = other.id
+        db.commit()
+    result = client.post("/api/v1/matches", json={"waste_log_ids": [1, 3]}).json()
+    assert [row["waste_log_id"] for row in result["items"][0]["suggested_allocation"]] == [1]
+    assert offer(client, req["id"], waste_log_id=3).status_code == 409
+    assert offer(client, req["id"]).status_code == 201
 
 
 def test_full_lifecycle_partial_receipt_and_analytics(redistribution):
@@ -338,6 +383,10 @@ def test_simulated_redistribution_without_policy(monkeypatch):
         assert matches.status_code == 200 and matches.json()["total"] == 1, matches.text
         candidate = matches.json()["items"][0]
         assert candidate["is_simulated"] and candidate["suggested_allocation"][0]["offered_servings"] == 15
+        existing = client.post("/api/v1/matches", headers=kitchen, json={"waste_log_ids": [1]}).json()
+        assert existing["total"] == 1
+        assert existing["items"][0]["ngo_id"] == candidate["ngo_id"]
+        assert existing["items"][0]["suggested_allocation"][0]["offered_servings"] == 15
         offer_body = {"requirement_id": req.json()["id"], "items": [
             {"waste_log_id": batch["id"], "offered_servings": 15},
         ]}

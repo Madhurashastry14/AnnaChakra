@@ -121,6 +121,20 @@ function MatchCard({ match, onChoose }) {
   );
 }
 
+function BatchExclusions({ batches }) {
+  if (!batches.length) return null;
+  return (
+    <ul>
+      {batches.map((batch) => (
+        <li key={batch.waste_log_id}>
+          <strong>{batch.food_name} · Batch #{batch.waste_log_id}</strong>
+          <ul>{batch.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function MatchingPage() {
   const { kitchen } = useKitchen();
   const location = useLocation();
@@ -130,6 +144,7 @@ export default function MatchingPage() {
   const [surplus, setSurplus] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [matches, setMatches] = useState([]);
+  const [diagnostics, setDiagnostics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [matching, setMatching] = useState(false);
   const [error, setError] = useState("");
@@ -140,6 +155,9 @@ export default function MatchingPage() {
     let active = true;
     setLoading(true);
     setError("");
+    setMatches([]);
+    setDiagnostics(null);
+    setMatchError("");
     getAvailableSurplus()
       .then((rows) => {
         if (!active) return;
@@ -162,6 +180,7 @@ export default function MatchingPage() {
       ? current.filter((value) => value !== id)
       : [...current, id]);
     setMatches([]);
+    setDiagnostics(null);
     setMatchError("");
   }
 
@@ -169,12 +188,14 @@ export default function MatchingPage() {
     setMatching(true);
     setMatchError("");
     setMatches([]);
+    setDiagnostics(null);
     try {
       const result = await getMatches({ waste_log_ids: selectedIds });
       setMatches(result.items ?? []);
-      if (!result.items?.length) {
-        setMatchError("No compatible NGOs were returned for these batches. Recheck availability or try another eligible selection.");
-      }
+      setDiagnostics({
+        exclusions: result.exclusions ?? [],
+        unavailableBatches: result.unavailable_batches ?? [],
+      });
     } catch (requestError) {
       setMatchError(getErrorMessage(requestError, "We couldn’t find suitable NGOs."));
     } finally {
@@ -219,6 +240,7 @@ export default function MatchingPage() {
                     label={`${batch.food_name} · ${formatQuantity(batch.available_quantity, batch.serving_unit)}`}
                     description={`Safe until ${batch.safe_until ? new Date(batch.safe_until).toLocaleString() : "not set"} · ${Math.max(0, Math.ceil(batch.remaining_eligible_seconds / 60))} min eligible time remaining`}
                     checked={selectedIds.includes(batch.waste_log_id)}
+                    disabled={matching}
                     onChange={() => toggleBatch(batch.waste_log_id)}
                   />
                 ))}
@@ -245,6 +267,32 @@ export default function MatchingPage() {
           {matchError ? <p className="k-form-error" role="alert">{matchError}</p> : null}
         </div>
       </Card>
+
+      {diagnostics && (diagnostics.exclusions.length > 0 || diagnostics.unavailableBatches.length > 0 || !matches.length) ? (
+        <Card className="k-redistribution-section">
+          <CardHeader title={matches.length ? "Matching exclusions" : "Why no matches were found"} />
+          <div className="k-card-body k-match-reasons">
+            {diagnostics.unavailableBatches.length > 0 ? (
+              <>
+                <h4>Unavailable batches</h4>
+                <BatchExclusions batches={diagnostics.unavailableBatches} />
+              </>
+            ) : null}
+            {diagnostics.exclusions.map((ngo) => (
+              <div key={`${ngo.ngo_id}-${ngo.requirement_id}`}>
+                <h4>{ngo.ngo_name}{ngo.requirement_id ? ` · Requirement #${ngo.requirement_id}` : ""}</h4>
+                {ngo.reasons.length > 0 ? (
+                  <ul>{ngo.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+                ) : null}
+                <BatchExclusions batches={ngo.batches} />
+              </div>
+            ))}
+            {!diagnostics.exclusions.length && !diagnostics.unavailableBatches.length ? (
+              <p>No NGO requirements were returned for this selection.</p>
+            ) : null}
+          </div>
+        </Card>
+      ) : null}
 
       {matches.length ? (
         <>

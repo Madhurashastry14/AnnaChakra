@@ -113,16 +113,15 @@ export default function ScannerPage() {
     [foods, selectedFoodId],
   );
 
-  const boxes = countData?.boxes ?? result?.boxes ?? [];
-  const boxesOwner = countData?.count_food_item_id ?? result?.count_food_item_id ?? result?.food_item_id;
-  const showBoxes =
-    boxes.length > 0 &&
-    selectedFoodId !== "" &&
-    String(boxesOwner) === String(selectedFoodId);
-
-  const countingStatus = countData?.counting_status ?? result?.counting_status;
-  const countingMethod = countData?.counting_method ?? result?.counting_method;
-  const countingWarnings = countData?.counting_warnings ?? result?.counting_warnings ?? [];
+  const automaticCount = selectedFoodId && String(result?.count_food_item_id) === selectedFoodId
+    ? result
+    : null;
+  const selectedCount = countData ?? automaticCount;
+  const boxes = selectedCount?.boxes ?? [];
+  const showBoxes = boxes.length > 0;
+  const countingStatus = selectedCount?.counting_status;
+  const countingMethod = selectedCount?.counting_method;
+  const countingWarnings = selectedCount?.counting_warnings ?? [];
 
   function handleFileSelected(nextFile) {
     setFileError("");
@@ -169,17 +168,14 @@ export default function ScannerPage() {
     setScanning(true);
     setScanError("");
     setActionError("");
+    setResult(null);
     setCountData(null);
+    setSelectedFoodId("");
+    setQuantity("");
     try {
       const data = await predictFoodImage(file);
       setResult(data);
-      setSelectedFoodId(data.food_item_id ? String(data.food_item_id) : "");
-      setQuantity(
-        data.estimated_servings === null || data.estimated_servings === undefined
-          ? ""
-          : String(data.estimated_servings),
-      );
-      notify("Image analysed. Review the prediction before logging waste.");
+      notify("Image analysed. Select the food shown in the photo.");
     } catch (error) {
       setScanError(getErrorMessage(error, "We couldn’t analyse this image."));
     } finally {
@@ -204,9 +200,6 @@ export default function ScannerPage() {
     try {
       const data = await countPrediction(result.prediction_id, Number(selectedFoodId));
       setCountData(data);
-      if (data.estimated_servings !== null && data.estimated_servings !== undefined) {
-        setQuantity(String(data.estimated_servings));
-      }
       if (data.counting_status === "ESTIMATED") {
         notify("Count estimated for the selected food. Confirm the quantity before logging.");
       }
@@ -271,19 +264,19 @@ export default function ScannerPage() {
               onFileSelected={handleFileSelected}
               onClear={clearImage}
               error={fileError}
-              disabled={scanning}
+              disabled={scanning || recounting}
             />
             <div className="k-form-actions">
               <Button
                 icon={ScanLine}
                 onClick={handleScan}
                 loading={scanning}
-                disabled={!file || Boolean(fileError)}
+                disabled={!file || Boolean(fileError) || recounting}
               >
                 Analyse image
               </Button>
               {result ? (
-                <Button variant="secondary" icon={RotateCcw} onClick={clearImage} disabled={scanning}>
+                <Button variant="secondary" icon={RotateCcw} onClick={clearImage} disabled={scanning || recounting}>
                   Start over
                 </Button>
               ) : null}
@@ -335,7 +328,7 @@ export default function ScannerPage() {
               <p className="k-eyebrow">SCAN RESULT</p>
               <h2>Review before logging</h2>
             </div>
-            <Badge tone={countingTone(countingStatus)}>{labelFor(countingStatus, "Counting status unknown")}</Badge>
+            {countingStatus ? <Badge tone={countingTone(countingStatus)}>{labelFor(countingStatus)}</Badge> : null}
           </div>
 
           <div className="k-scanner-result-grid">
@@ -350,13 +343,6 @@ export default function ScannerPage() {
                   />
                   {showBoxes ? <BoxOverlay boxes={boxes} /> : null}
                 </div>
-                {boxes.length > 0 && !showBoxes ? (
-                  <p className="k-note">
-                    <Info size={14} aria-hidden="true" />
-                    Detected boxes belong to a different food selection. Recount the selected
-                    food to refresh them.
-                  </p>
-                ) : null}
                 {showBoxes ? (
                   <p className="k-note">
                     <Info size={14} aria-hidden="true" />
@@ -368,7 +354,7 @@ export default function ScannerPage() {
             </Card>
 
             <Card>
-              <CardHeader icon={Utensils} title="Prediction" subtitle="Classification confidence is not a safety rating." />
+              <CardHeader icon={Utensils} title="Food suggestions" subtitle="The model recognizes a limited set of dishes. Choose the actual food from the catalogue if it is missing from the suggestions." />
               <div className="k-card-body">
                 <dl className="k-detail-grid">
                   <div>
@@ -398,9 +384,9 @@ export default function ScannerPage() {
                   <div>
                     <dt>Estimated quantity</dt>
                     <dd>
-                      {result.estimated_servings === null || result.estimated_servings === undefined
+                      {selectedCount?.estimated_servings == null
                         ? "Not estimated"
-                        : formatNumber(result.estimated_servings)}
+                        : formatNumber(selectedCount.estimated_servings)}
                     </dd>
                   </div>
                 </dl>
@@ -429,7 +415,7 @@ export default function ScannerPage() {
 
                 {result.top_predictions?.length > 0 ? (
                   <div className="k-top-predictions">
-                    <h3>Alternative matches</h3>
+                    <h3>Choose a suggestion</h3>
                     {result.top_predictions.map((prediction, index) => (
                       <button
                         type="button"
@@ -440,7 +426,7 @@ export default function ScannerPage() {
                             handleFoodChange(String(prediction.food_item_id));
                           }
                         }}
-                        disabled={!prediction.food_item_id}
+                        disabled={!prediction.food_item_id || recounting}
                       >
                         <span>
                           <strong>{prediction.food || prediction.label}</strong>
@@ -452,7 +438,7 @@ export default function ScannerPage() {
                       </button>
                     ))}
                     <p className="k-hint">
-                      Selecting an alternative only changes the food. Recount to get a quantity for it.
+                      You can also select a food from the catalogue below.
                     </p>
                   </div>
                 ) : null}
@@ -463,7 +449,7 @@ export default function ScannerPage() {
           <Card>
             <CardHeader
               icon={Sparkles}
-              title="Correct the food and confirm quantity"
+              title="Select food and confirm quantity"
               subtitle="Automatic counts are experimental. Enter the quantity you can stand behind."
             />
             <div className="k-card-body k-form">
@@ -474,7 +460,8 @@ export default function ScannerPage() {
                   onChange={handleFoodChange}
                   label="Food item"
                   required
-                  hint="Choose the correct catalogue item if the prediction is wrong."
+                  disabled={recounting}
+                  hint="Select the food you see in the photo."
                 />
                 <TextInput
                   label={`Confirmed quantity${selectedFood ? ` (${unitLabel(selectedFood.serving_unit)})` : ""}`}
@@ -505,10 +492,10 @@ export default function ScannerPage() {
                 >
                   Recount selected food
                 </Button>
-                <Button icon={ArrowRight} onClick={handoffToWaste}>
+                <Button icon={ArrowRight} onClick={handoffToWaste} disabled={!selectedFoodId || recounting}>
                   Continue to waste log
                 </Button>
-                <Button variant="ghost" onClick={clearImage}>
+                <Button variant="ghost" onClick={clearImage} disabled={recounting}>
                   Discard scan
                 </Button>
               </div>

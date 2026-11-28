@@ -8,11 +8,11 @@ from fastapi import HTTPException
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.models.enums import SafetyStatus, VerificationStatus, WasteType
+from app.models.enums import VerificationStatus, WasteType
 from app.models.food import FoodItem
 from app.models.organization import NGO, NGORequirement
 from app.models.waste import WasteLog
-from app.services.ngo_requirements import aware, local_date, now_utc, requirement_open
+from app.services.ngo_requirements import aware, now_utc, requirement_closures
 from app.services.reservations import amount, capacity_left, food_reserved
 from app.services.safety import environment_allows
 from app.services.waste import redistribution_check
@@ -49,10 +49,22 @@ def participating(kitchen, ngo=None):
         raise HTTPException(409, "NGO is unverified or outside this redistribution environment")
 
 
-def compatible(food, requirement):
+def food_incompatibilities(food, requirement):
+    reasons = []
     dietary = requirement.accepts_vegetarian if food.is_vegetarian else requirement.accepts_non_vegetarian
-    categories = requirement.accepted_categories or []
-    return dietary and (not categories or food.category.strip().casefold() in categories)
+    if not dietary:
+        group = "vegetarian" if food.is_vegetarian else "non-vegetarian"
+        reasons.append(f"The requirement does not accept {group} food.")
+    accepted = {entry.strip().casefold() for entry in (requirement.accepted_categories or [])}
+    food_labels = {food.name.strip().casefold(), food.category.strip().casefold()}
+    if accepted and accepted.isdisjoint(food_labels):
+        reasons.append(f"{food.name} (category {food.category}) is outside the accepted foods "
+                       f"and categories ({', '.join(sorted(accepted))}).")
+    return reasons
+
+
+def compatible(food, requirement):
+    return not food_incompatibilities(food, requirement)
 
 
 @dataclass(frozen=True)
@@ -64,7 +76,7 @@ class Surplus:
     screening: object
 
 
-def read_surplus(db, kitchen, ids=None, *, now=None, lock=False, strict=False):
+def read_surplus(db, kitchen, ids=None, *, now=None, lock=False, strict=False, exclusions=None):
     now = now or now_utc()
     participating(kitchen)
     query = (select(WasteLog, FoodItem).join(FoodItem, FoodItem.id == WasteLog.food_item_id)
@@ -79,20 +91,26 @@ def read_surplus(db, kitchen, ids=None, *, now=None, lock=False, strict=False):
         raise HTTPException(404, "Waste log not found")
     surplus = []
     for waste, food in rows:
-        screened = redistribution_check(waste, food, kitchen, now)
-        if (waste.waste_type == WasteType.PLATE_WASTE or screened.status != SafetyStatus.ELIGIBLE
-                or screened.safe_until is None or screened.safe_until <= now
-                or not isfinite(waste.confirmed_servings) or waste.confirmed_servings <= 0
-                or (food.serving_unit == "piece" and not float(waste.confirmed_servings).is_integer())):
-            if strict:
-                raise HTTPException(409, f"Waste log {waste.id} is not currently eligible")
-            continue
-        reserved = food_reserved(db, waste.id, now)
-        available = amount(waste.confirmed_servings) - reserved
-        if available > 0:
-            surplus.append(Surplus(waste, food, reserved, available, screened))
-        elif strict:
-            raise HTTPException(409, f"Waste log {waste.id} has no available quantity")
+        if waste.is_simulated != kitchen.is_simulated:
+            reason = "Batch belongs to a different redistribution environment."
+        elif waste.waste_type == WasteType.PLATE_WASTE:
+            reason = "Plate waste cannot be redistributed."
+        elif not isfinite(waste.confirmed_servings) or waste.confirmed_servings <= 0:
+            reason = "Batch has no positive confirmed quantity."
+        elif food.serving_unit == "piece" and not float(waste.confirmed_servings).is_integer():
+            reason = "Piece-based batches require whole quantities."
+        else:
+            reserved = food_reserved(db, waste.id, now)
+            available = amount(waste.confirmed_servings) - reserved
+            if available > 0:
+                screened = redistribution_check(waste, food, kitchen, now)
+                surplus.append(Surplus(waste, food, reserved, available, screened))
+                continue
+            reason = "No unreserved quantity remains."
+        if strict:
+            raise HTTPException(409, f"Waste log {waste.id}: {reason}")
+        if exclusions is not None:
+            exclusions.append({"waste_log_id": waste.id, "food_name": food.name, "reasons": [reason]})
     return surplus
 
 
@@ -123,44 +141,72 @@ def match_ngos(db, kitchen, request):
     ids = request.waste_log_ids or [item.waste_log_id for item in request.items]
     requested = {item.waste_log_id: amount(item.offered_servings) for item in request.items}
     max_distance = min(request.max_distance_km or settings.MATCH_MAX_DISTANCE_KM, settings.MATCH_MAX_DISTANCE_KM)
-    rows = read_surplus(db, kitchen, ids, now=now)
-    if not rows:
-        return {"items": [], "total": 0}
+    unavailable_batches = []
+    rows = read_surplus(db, kitchen, ids, now=now, exclusions=unavailable_batches)
     candidates = db.execute(
-        select(NGORequirement, NGO).join(NGO, NGO.id == NGORequirement.ngo_id)
-        .where(NGORequirement.is_active.is_(True), NGORequirement.required_date == local_date(now),
-               NGORequirement.available_until > now, NGO.verification_status == VerificationStatus.VERIFIED,
-               NGO.is_simulated == kitchen.is_simulated)
+        select(NGO, NGORequirement).outerjoin(NGORequirement, NGORequirement.ngo_id == NGO.id)
+        .order_by(NGO.id, NGORequirement.id)
     )
     matches = []
-    for requirement, ngo in candidates:
-        if not requirement_open(requirement, now):
-            continue
+    exclusions = []
+    for ngo, requirement in candidates:
+        reasons = []
+        if ngo.verification_status != VerificationStatus.VERIFIED:
+            reasons.append(f"NGO verification is {ngo.verification_status.value.lower()}.")
+        if ngo.is_simulated != kitchen.is_simulated:
+            reasons.append("NGO belongs to a different redistribution environment.")
         try:
             distance = distance_between(kitchen, ngo)
         except HTTPException:
+            distance = None
+            reasons.append("Kitchen or NGO coordinates are invalid or missing.")
+        if distance is not None and distance > max_distance:
+            reasons.append(f"Distance is {distance:.2f} km. The limit is {max_distance:g} km.")
+        if not rows:
+            reasons.append("None of the selected batches has available surplus.")
+
+        exclusion = {"ngo_id": ngo.id, "ngo_name": ngo.name,
+                     "requirement_id": requirement.id if requirement else None,
+                     "reasons": reasons, "batches": []}
+        if requirement is None:
+            reasons.append("The NGO has no food requirement.")
+            exclusions.append(exclusion)
             continue
-        if distance > max_distance:
-            continue
-        eta = travel_minutes(distance)
-        remaining = capacity_left(db, requirement)
+
+        reasons.extend(requirement_closures(requirement, now))
+        eta = travel_minutes(distance) if distance is not None else None
+        arrival = now + timedelta(minutes=eta) if eta is not None else None
+        remaining = capacity_left(db, requirement, now=now)
         left = dict(remaining)
         deadline = aware(requirement.available_until)
+        if arrival is not None and now < deadline <= arrival:
+            reasons.append(f"Estimated delivery takes {eta} minutes and would arrive at or after "
+                           f"the NGO availability deadline ({deadline.isoformat()}).")
         allocations = []
         for row in rows:
-            if not compatible(row.food, requirement) or now + timedelta(minutes=eta) >= min(deadline, row.screening.safe_until):
-                continue
+            batch_reasons = food_incompatibilities(row.food, requirement)
+            if arrival is not None and arrival >= row.screening.safe_until:
+                batch_reasons.append(f"Estimated delivery would arrive at or after the batch deadline "
+                                     f"({row.screening.safe_until.isoformat()}).")
             unit = row.food.serving_unit
             quantity = min(row.available, requested.get(row.waste.id, row.available), left[unit])
             if unit == "piece":
                 quantity = Decimal(int(quantity))
-            if quantity <= 0:
+            if left[unit] <= 0:
+                batch_reasons.append(f"No remaining {unit.value} capacity.")
+            elif quantity <= 0:
+                batch_reasons.append("Less than one whole piece can be allocated.")
+            if batch_reasons:
+                exclusion["batches"].append({"waste_log_id": row.waste.id, "food_name": row.food.name,
+                                             "reasons": batch_reasons})
+            if reasons or batch_reasons:
                 continue
             left[unit] -= quantity
             allocations.append({"waste_log_id": row.waste.id, "food_item_id": row.food.id,
                                 "food_name": row.food.name, "serving_unit": unit,
                                 "offered_servings": float(quantity), "safe_until": row.screening.safe_until})
         if not allocations:
+            exclusions.append(exclusion)
             continue
         used = [float(1 - left[unit] / remaining[unit]) for unit in remaining if left[unit] < remaining[unit]]
         safety_deadline = min(line["safe_until"] for line in allocations)
@@ -178,4 +224,5 @@ def match_ngos(db, kitchen, request):
             "safe_until": safety_deadline, "available_until": deadline, "is_simulated": ngo.is_simulated,
         })
     matches.sort(key=lambda row: (-row["match_score"], row["ngo_id"], row["requirement_id"]))
-    return {"items": matches, "total": len(matches)}
+    return {"items": matches, "total": len(matches), "exclusions": exclusions,
+            "unavailable_batches": unavailable_batches}

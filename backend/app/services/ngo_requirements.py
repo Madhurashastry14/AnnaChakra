@@ -24,9 +24,22 @@ def local_date(value):
     return aware(value).astimezone(ZoneInfo(settings.REDISTRIBUTION_TIMEZONE)).date()
 
 
+def requirement_closures(requirement, now):
+    today = local_date(now)
+    reasons = []
+    if not requirement.is_active:
+        reasons.append("Requirement is inactive.")
+    if requirement.required_date != today:
+        reasons.append(f"Required date is {requirement.required_date}. Today is {today} in "
+                       f"{settings.REDISTRIBUTION_TIMEZONE}.")
+    deadline = aware(requirement.available_until)
+    if deadline <= now:
+        reasons.append(f"Availability ended at {deadline.isoformat()}.")
+    return reasons
+
+
 def requirement_open(requirement, now):
-    return (requirement.is_active and requirement.required_date == local_date(now)
-            and aware(requirement.available_until) > now)
+    return not requirement_closures(requirement, now)
 
 
 def owned_requirement(db, ngo_id, requirement_id, *, lock=False):

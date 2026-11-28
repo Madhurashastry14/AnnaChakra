@@ -120,12 +120,8 @@ export default function RequirementFormPage() {
       setError("Enter both the required date and the availability deadline.");
       return;
     }
-    if (form.is_active && (form.required_date < todayISO() || new Date(form.available_until).getTime() <= Date.now())) {
-      setError("An active requirement needs a current or future date and a future availability deadline.");
-      return;
-    }
-    if (form.available_until.slice(0, 10) < form.required_date) {
-      setError("The availability deadline must cover the required date.");
+    if (form.is_active && new Date(form.available_until).getTime() <= Date.now()) {
+      setError("An active requirement needs a future availability deadline.");
       return;
     }
 
@@ -222,12 +218,12 @@ export default function RequirementFormPage() {
                 <CheckboxField label="Requirement is active" description="Inactive requirements will not be matched." checked={form.is_active} onChange={(event) => setField("is_active", event.target.checked)} />
               </div>
               <TextareaInput
-                label="Accepted food categories"
+                label="Accepted foods and categories"
                 rows={3}
                 value={form.accepted_categories}
                 onChange={(event) => setField("accepted_categories", event.target.value)}
                 maxLength={1600}
-                hint="Separate categories with commas. Leave blank for no category restriction; dietary choices still apply."
+                hint="Enter exact dish names such as Dosa, or categories such as breakfast. Separate entries with commas. Leave blank for any food category."
                 className="k-field-span-2"
               />
             </FormGrid>
