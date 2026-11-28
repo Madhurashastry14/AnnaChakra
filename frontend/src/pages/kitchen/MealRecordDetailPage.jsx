@@ -3,7 +3,6 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   AlertTriangle,
   ClipboardList,
-  Info,
   Trash2,
   TrendingUp,
   Utensils,
