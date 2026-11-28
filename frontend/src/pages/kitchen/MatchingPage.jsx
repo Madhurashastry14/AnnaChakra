@@ -60,13 +60,14 @@ function MatchMap({ kitchen, matches }) {
   );
 }
 
-function MatchCard({ match, onChoose }) {
+function MatchCard({ match, recommended, selected, onSelect }) {
   const allocations = match.suggested_allocation ?? [];
   return (
     <article className="k-redistribution-match">
       <div className="k-redistribution-batch-heading">
         <div>
           <h3>{match.ngo_name}</h3>
+          {recommended ? <p><strong>Best match</strong></p> : null}
           <p>{match.address || "Address not provided"}</p>
         </div>
         <div className="k-match-score">
@@ -109,13 +110,10 @@ function MatchCard({ match, onChoose }) {
       </p>
       {match.is_simulated ? <p className="k-demo-label">Demonstration data only. Not approved for actual consumption.</p> : null}
       <div className="k-redistribution-card-actions">
-        <Button
-          icon={ArrowRight}
-          disabled={!allocations.length}
-          onClick={() => onChoose(match)}
-        >
-          Choose this NGO
-        </Button>
+        <label>
+          <input type="radio" name="ngo-match" checked={selected} onChange={onSelect} />
+          {" "}Select {match.ngo_name} (requirement #{match.requirement_id})
+        </label>
       </div>
     </article>
   );
@@ -144,6 +142,7 @@ export default function MatchingPage() {
   const [surplus, setSurplus] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [matches, setMatches] = useState([]);
+  const [selectedMatch, setSelectedMatch] = useState(null);
   const [diagnostics, setDiagnostics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [matching, setMatching] = useState(false);
@@ -191,7 +190,9 @@ export default function MatchingPage() {
     setDiagnostics(null);
     try {
       const result = await getMatches({ waste_log_ids: selectedIds });
-      setMatches(result.items ?? []);
+      const rankedMatches = result.items ?? [];
+      setMatches(rankedMatches);
+      setSelectedMatch(rankedMatches[0] ?? null);
       setDiagnostics({
         exclusions: result.exclusions ?? [],
         unavailableBatches: result.unavailable_batches ?? [],
@@ -268,6 +269,36 @@ export default function MatchingPage() {
         </div>
       </Card>
 
+      {matches.length ? (
+        <>
+          <MatchMap kitchen={kitchen} matches={matches} />
+          <Card className="k-redistribution-section">
+            <CardHeader
+              title="Matching results"
+              subtitle={`${matches.length} suitable ${matches.length === 1 ? "option" : "options"} returned. Scores are matching heuristics, not probabilities.`}
+            />
+            <div className="k-card-body">
+              <div className="k-redistribution-match-grid">
+                {matches.map((match, index) => (
+                  <MatchCard
+                    key={`${match.ngo_id}-${match.requirement_id}`}
+                    match={match}
+                    recommended={index === 0}
+                    selected={selectedMatch === match}
+                    onSelect={() => setSelectedMatch(match)}
+                  />
+                ))}
+              </div>
+              <div className="k-redistribution-card-actions">
+                <Button icon={ArrowRight} disabled={!selectedMatch} onClick={() => chooseMatch(selectedMatch)}>
+                  Continue with {selectedMatch?.ngo_name ?? "selected NGO"}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </>
+      ) : null}
+
       {diagnostics && (diagnostics.exclusions.length > 0 || diagnostics.unavailableBatches.length > 0 || !matches.length) ? (
         <Card className="k-redistribution-section">
           <CardHeader title={matches.length ? "Matching exclusions" : "Why no matches were found"} />
@@ -292,25 +323,6 @@ export default function MatchingPage() {
             ) : null}
           </div>
         </Card>
-      ) : null}
-
-      {matches.length ? (
-        <>
-          <MatchMap kitchen={kitchen} matches={matches} />
-          <Card className="k-redistribution-section">
-            <CardHeader
-              title="Matching results"
-              subtitle={`${matches.length} suitable ${matches.length === 1 ? "option" : "options"} returned. Scores are matching heuristics, not probabilities.`}
-            />
-            <div className="k-card-body">
-              <div className="k-redistribution-match-grid">
-                {matches.map((match) => (
-                  <MatchCard key={`${match.ngo_id}-${match.requirement_id}`} match={match} onChoose={chooseMatch} />
-                ))}
-              </div>
-            </div>
-          </Card>
-        </>
       ) : null}
     </>
   );
