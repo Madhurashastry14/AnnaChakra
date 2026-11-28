@@ -106,10 +106,12 @@ export default function DonationOffersPage() {
                   </dl>
                   {donation.notes ? <p className="k-portal-notes"><strong>Kitchen notes:</strong> {donation.notes}</p> : null}
                   {donation.is_simulated ? <span className="k-demo-label">Demonstration data only. Not approved for actual consumption.</span> : null}
-                  <div className="k-redistribution-card-actions">
-                    <Button size="sm" to={`/ngo/donations/${donation.id}`}>Review offer</Button>
-                    {donation.expired ? <span className="k-muted-text">This offer has expired.</span> : null}
-                  </div>
+                  {donation.status !== "COMPLETED" ? (
+                    <div className="k-redistribution-card-actions">
+                      <Button size="sm" to={`/ngo/donations/${donation.id}`}>Review offer</Button>
+                      {donation.expired ? <span className="k-muted-text">This offer has expired.</span> : null}
+                    </div>
+                  ) : null}
                 </article>
               ))}
             </div>
