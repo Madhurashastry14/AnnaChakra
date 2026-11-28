@@ -13,7 +13,7 @@ from app.models.food import FoodItem
 from app.models.organization import NGO, NGORequirement
 from app.models.waste import WasteLog
 from app.services.ngo_requirements import aware, now_utc, requirement_closures
-from app.services.reservations import amount, capacity_left, food_reserved
+from app.services.reservations import amount, capacity_left, food_allocations, food_balance
 from app.services.safety import environment_allows
 from app.services.waste import redistribution_check
 
@@ -100,13 +100,14 @@ def read_surplus(db, kitchen, ids=None, *, now=None, lock=False, strict=False, e
         elif food.serving_unit == "piece" and not float(waste.confirmed_servings).is_integer():
             reason = "Piece-based batches require whole quantities."
         else:
-            reserved = food_reserved(db, waste.id, now)
-            available = amount(waste.confirmed_servings) - reserved
+            reserved, available = food_balance(
+                waste.confirmed_servings, food_allocations(db, waste.id, now),
+            )
             if available > 0:
                 screened = redistribution_check(waste, food, kitchen, now)
                 surplus.append(Surplus(waste, food, reserved, available, screened))
                 continue
-            reason = "No unreserved quantity remains."
+            reason = "No quantity is available for redistribution."
         if strict:
             raise HTTPException(409, f"Leftover log {waste.id}: {reason}")
         if exclusions is not None:

@@ -14,7 +14,7 @@ from app.models.vision import VisionPrediction
 from app.schemas.waste import SafetyEvidence, WasteRequest, WasteResponse
 from app.services.safety import Screening, current_policy, environment_allows, policy_for_batch, screen_waste
 from app.services.vision import owned_prediction
-from app.services.reservations import food_holds
+from app.services.reservations import food_allocations, food_balance, food_holds
 
 SIMULATION_DECLARATION_VERSION = "simulation-declaration-v1"
 UNSERVED = {WasteType.UNSERVED_SURPLUS, WasteType.SPOILED_FOOD}
@@ -34,14 +34,6 @@ def owned_waste(db, kitchen_id, waste_id, *, lock=False):
     if row is None:
         raise HTTPException(404, "Leftover log not found")
     return row
-
-
-def _donation_allocations(db, waste_id):
-    return db.execute(
-        select(Donation.status, DonationItem.offered_servings, DonationItem.received_servings)
-        .join(DonationItem, DonationItem.donation_id == Donation.id)
-        .where(DonationItem.waste_log_id == waste_id, food_holds(datetime.now(timezone.utc)))
-    ).all()
 
 
 def donation_allocations_bulk(db, waste_ids):
@@ -192,9 +184,8 @@ def waste_response(db, row, kitchen, food=None, *, policy=_UNSET, allocations=No
     check = redistribution_check(row, food, kitchen, policy=policy)
     available = 0
     if check.status == SafetyStatus.ELIGIBLE:
-        rows = _donation_allocations(db, row.id) if allocations is None else allocations
-        reserved = fsum(offered for _, offered, _ in rows)
-        available = max(0, row.confirmed_servings - reserved)
+        rows = food_allocations(db, row.id) if allocations is None else allocations
+        _, available = food_balance(row.confirmed_servings, rows)
     return WasteResponse(
         **response_values(row), id=row.id, created_at=utc(row.created_at),
         food_name=food.name, serving_unit=food.serving_unit, is_simulated=row.is_simulated,
@@ -224,7 +215,7 @@ def save_waste(db, kitchen, request, current=None):
         protected = {"food_item_id", "confirmed_servings", "waste_type", "prepared_at",
                      "meal_record_item_id", "prediction_id"}
         if any(values[key] != previous[key] for key in protected):
-            if _donation_allocations(db, current.id):
+            if food_allocations(db, current.id):
                 raise HTTPException(409, "An existing donation protects this leftover log from operational edits")
     prediction = (owned_prediction(db, kitchen_id, request.prediction_id, lock=True)
                   if request.prediction_id else None)

@@ -63,9 +63,17 @@ def capacity_left(db, requirement, now=None):
             for unit, limit in capacity_limits(requirement).items()}
 
 
-def food_reserved(db, waste_id, now=None):
+def food_allocations(db, waste_id, now=None):
     now = now or datetime.now(timezone.utc)
-    values = db.scalars(select(DonationItem.offered_servings).join(
+    return db.execute(select(Donation.status, DonationItem.offered_servings,
+                             DonationItem.received_servings).join(
         Donation, Donation.id == DonationItem.donation_id,
-    ).where(DonationItem.waste_log_id == waste_id, food_holds(now)))
-    return sum(map(amount, values), Decimal(0))
+    ).where(DonationItem.waste_log_id == waste_id, food_holds(now))).all()
+
+
+def food_balance(confirmed, allocations):
+    reserved = sum((amount(offered) for _, offered, _ in allocations), Decimal(0))
+    if any(status == DonationStatus.COMPLETED and (received is None or received > 0)
+           for status, _, received in allocations):
+        return reserved, Decimal(0)
+    return reserved, max(Decimal(0), amount(confirmed) - reserved)

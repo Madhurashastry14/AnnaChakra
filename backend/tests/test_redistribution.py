@@ -239,8 +239,9 @@ def test_full_lifecycle_partial_receipt_and_analytics(redistribution):
     actor["id"] = 3
     assert client.get("/api/v1/analytics/redistribution-summary").json()["quantities"] == []
     actor["id"] = 1
-    batch = client.get("/api/v1/waste-logs/available-surplus").json()[0]
-    assert batch["available_quantity"] == 30
+    available = client.get("/api/v1/waste-logs/available-surplus").json()
+    assert 1 not in {batch["waste_log_id"] for batch in available}
+    assert client.get("/api/v1/waste-logs/1").json()["available_servings"] == 0
     actor["id"] = 5
     assert len(client.get(DON, params={"ngo_id": 1, "status": "COMPLETED"}).json()) == 1
 
