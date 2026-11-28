@@ -49,7 +49,7 @@ export default function LocationPicker({ latitude, longitude, onChange, height =
           />
         ) : null}
       </MapContainer>
-      <p className="k-map-hint">Click anywhere on the map to set the kitchen location.</p>
+      <p className="k-map-hint">Click the map to fine-tune the location.</p>
     </div>
   );
 }

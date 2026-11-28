@@ -22,6 +22,7 @@ import { VerificationBadge } from "../../components/ui/Badge.jsx";
 import Button from "../../components/ui/Button.jsx";
 import { FormError, FormGrid, TextInput } from "../../components/ui/Form.jsx";
 import { ErrorState, LoadingSkeleton } from "../../components/ui/States.jsx";
+import PlaceSearch from "../../components/ui/PlaceSearch.jsx";
 import LocationPicker from "../../components/kitchen/LocationPicker.jsx";
 import { useToast } from "../../components/feedback/ToastProvider.jsx";
 import { formatDate } from "../../utils/format.js";
@@ -70,6 +71,22 @@ export default function KitchenSetupPage() {
       longitude: longitude.toFixed(6),
     }));
     setErrors((current) => ({ ...current, latitude: undefined, longitude: undefined }));
+  }
+
+  function applyPlace({ address, latitude, longitude }) {
+    setForm((current) => ({
+      ...current,
+      address,
+      latitude: latitude.toFixed(6),
+      longitude: longitude.toFixed(6),
+    }));
+    setErrors((current) => ({
+      ...current,
+      address: undefined,
+      latitude: undefined,
+      longitude: undefined,
+    }));
+    setLocationMessage("Address and coordinates filled from the selected place. Adjust the pin on the map if needed.");
   }
 
   function useCurrentLocation() {
@@ -205,6 +222,7 @@ export default function KitchenSetupPage() {
           </p>
 
           <form className="k-form" onSubmit={handleSubmit} noValidate>
+            <PlaceSearch onSelect={applyPlace} />
             <FormGrid columns={2}>
               <TextInput
                 label="Kitchen name"
@@ -270,7 +288,7 @@ export default function KitchenSetupPage() {
               >
                 Use my current location
               </Button>
-              <span className="k-muted-text">or click the map to place the kitchen</span>
+              <span className="k-muted-text">or search for a place above, or click the map to place the kitchen</span>
             </div>
             {locationMessage ? <p className="k-note">{locationMessage}</p> : null}
 

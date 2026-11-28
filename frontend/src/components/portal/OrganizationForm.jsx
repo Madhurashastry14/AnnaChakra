@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { MapPin, Save } from "lucide-react";
 import { FormError, FormGrid, TextInput } from "../ui/Form.jsx";
 import Button from "../ui/Button.jsx";
+import PlaceSearch from "../ui/PlaceSearch.jsx";
 import LocationPicker from "../kitchen/LocationPicker.jsx";
 
 function formValues(organization) {
@@ -30,6 +31,16 @@ export default function OrganizationForm({
 
   function setField(field, value) {
     setValues((current) => ({ ...current, [field]: value }));
+    setValidationError("");
+  }
+
+  function applyPlace({ address, latitude, longitude }) {
+    setValues((current) => ({
+      ...current,
+      address,
+      latitude: String(latitude),
+      longitude: String(longitude),
+    }));
     setValidationError("");
   }
 
@@ -70,6 +81,7 @@ export default function OrganizationForm({
 
   return (
     <form className="k-form" onSubmit={handleSubmit} noValidate>
+      <PlaceSearch onSelect={applyPlace} />
       <FormGrid columns={2}>
         <TextInput
           label="Organization name"
@@ -117,7 +129,7 @@ export default function OrganizationForm({
       </FormGrid>
       <div className="k-organization-map-section">
         <h3><MapPin size={16} aria-hidden="true" /> Organization location</h3>
-        <p>Click the map to set coordinates. Confirm the location before saving.</p>
+        <p>Search for a place above or click the map to set coordinates. Confirm the location before saving.</p>
         <LocationPicker
           latitude={latitude}
           longitude={longitude}
